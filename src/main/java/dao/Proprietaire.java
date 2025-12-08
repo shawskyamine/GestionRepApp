@@ -6,17 +6,16 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.OneToOne;
-
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+import lombok.experimental.SuperBuilder;
 
 @Entity
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
+@SuperBuilder
 public class Proprietaire extends Utilisateur {
 
     @Column
@@ -24,5 +23,5 @@ public class Proprietaire extends Utilisateur {
 
     @Column
     private double comptePersonnel;
-
 }
+
