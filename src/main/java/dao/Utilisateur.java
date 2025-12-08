@@ -15,15 +15,21 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Client {
+public class Utilisateur {
 	@Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-	private Long id;
+	private int id;
 	@Column(length = 50)
 	private String nom;
 	@Column(length = 50)
 	private String prenom;
-	@Column(length = 15)
-	private String numTel;
+	@Column(length = 20)
+	private String Identifiant;
+	@Column(length = 20)
+	private String mdp;
+	@Column(length = 20)
+	private String role;
+	
+	
 }
 
 
