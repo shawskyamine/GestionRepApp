@@ -5,5 +5,7 @@ public class ConnectionFailedException extends Exception {
 		// TODO Auto-generated constructor stub
 	super(msg);
 	}
+	
+
 
 }

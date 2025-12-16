@@ -1,6 +1,7 @@
 package dao;
 
 import javax.persistence.Entity;
+import javax.persistence.Column;
 import javax.persistence.OneToMany;
 import java.util.List;
 
@@ -16,8 +17,17 @@ import lombok.experimental.SuperBuilder;
 @NoArgsConstructor
 @AllArgsConstructor
 @SuperBuilder
-public class Proprietaire extends Utilisateur {
+public class Reparateur extends Utilisateur {
 
-    @OneToMany(mappedBy = "proprietaire")
-    private List<Boutique> boutiques;
+    @Column(length = 100)
+    private String email;
+    
+    @Column
+    private int pourcentage;
+    
+    @Column(length = 20)
+    private String telephone;
+    
+    @OneToMany(mappedBy = "reparateur")
+    private List<Reparation> reparations;
 }
