@@ -22,8 +22,13 @@ public class Emprunt {
     private double montant;
 
     @Temporal(TemporalType.DATE)
-    private Date dateEmprunt;
+    private Date dateEmprunt;  // "Date ennunt" in diagram
 
-    @Column(length = 100)
-    private String motif;
+    @Temporal(TemporalType.DATE)
+    private Date dateRetour;   // "Date de retour" in diagram
+
+    @Column(length = 50)
+    private String etat;       // "Etat" in diagram
+
+    private int preteurId;     // "Preteur id" in diagram
 }

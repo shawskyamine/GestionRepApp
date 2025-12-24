@@ -27,8 +27,21 @@ public class GestionAppareil implements IGestionAppareil {
             throw new AppareilInvalideException("L'IMEI est obligatoire");
         }
         
-        if (appareil.getType() == null || appareil.getType().trim().isEmpty()) {
+        // Validate all required fields from diagram
+        if (appareil.getTypeAppareil() == null || appareil.getTypeAppareil().trim().isEmpty()) {
             throw new AppareilInvalideException("Le type d'appareil est obligatoire");
+        }
+        
+        if (appareil.getMarque() == null || appareil.getMarque().trim().isEmpty()) {
+            throw new AppareilInvalideException("La marque est obligatoire");
+        }
+        
+        if (appareil.getModele() == null || appareil.getModele().trim().isEmpty()) {
+            throw new AppareilInvalideException("Le modèle est obligatoire");
+        }
+        
+        if (appareil.getCouleur() == null || appareil.getCouleur().trim().isEmpty()) {
+            throw new AppareilInvalideException("La couleur est obligatoire");
         }
         
         // Vérification de l'unicité de l'IMEI
@@ -90,8 +103,21 @@ public class GestionAppareil implements IGestionAppareil {
             throw new AppareilInvalideException("L'IMEI est obligatoire");
         }
         
-        if (appareil.getType() == null || appareil.getType().trim().isEmpty()) {
+        // Validate all required fields from diagram
+        if (appareil.getTypeAppareil() == null || appareil.getTypeAppareil().trim().isEmpty()) {
             throw new AppareilInvalideException("Le type d'appareil est obligatoire");
+        }
+        
+        if (appareil.getMarque() == null || appareil.getMarque().trim().isEmpty()) {
+            throw new AppareilInvalideException("La marque est obligatoire");
+        }
+        
+        if (appareil.getModele() == null || appareil.getModele().trim().isEmpty()) {
+            throw new AppareilInvalideException("Le modèle est obligatoire");
+        }
+        
+        if (appareil.getCouleur() == null || appareil.getCouleur().trim().isEmpty()) {
+            throw new AppareilInvalideException("La couleur est obligatoire");
         }
         
         // Vérification que l'appareil existe
@@ -124,7 +150,7 @@ public class GestionAppareil implements IGestionAppareil {
     public List<Appareil> lister() throws OperationImpossibleException {
         try {
             return entityManager
-                    .createQuery("SELECT a FROM Appareil a ORDER BY a.type", Appareil.class)
+                    .createQuery("SELECT a FROM Appareil a ORDER BY a.marque, a.modele", Appareil.class)
                     .getResultList();
         } catch (Exception e) {
             throw new OperationImpossibleException("Erreur lors du listage des appareils: " + e.getMessage(), e);

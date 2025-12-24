@@ -17,9 +17,18 @@ import lombok.NoArgsConstructor;
 public class Appareil {
 
     @Id
-    @Column(length = 20)   // IMEI is usually 15–17 digits
+    @Column(length = 20)
     private String imei;
 
     @Column(length = 50)
-    private String type;
+    private String couleur;
+
+    @Column(length = 50)
+    private String marque;
+
+    @Column(length = 50)
+    private String modele;
+
+    @Column(length = 50, name = "type_appareil")
+    private String typeAppareil;
 }
