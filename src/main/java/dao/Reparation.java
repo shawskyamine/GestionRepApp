@@ -1,19 +1,8 @@
 package dao;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Column;
-import javax.persistence.Temporal;
-import javax.persistence.TemporalType;
-import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
-import javax.persistence.OneToOne;
-import javax.persistence.JoinColumn;
+import javax.persistence.*;
 import java.util.Date;
 import java.util.List;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -25,36 +14,42 @@ import lombok.Builder;
 @AllArgsConstructor
 @Builder
 public class Reparation {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
     
     @Column
-    private String causeReparation;
-    
-    @Column
-    private int codeReparation;
-    
-    @Temporal(TemporalType.DATE)
-    private Date dateCreation;
-    
-    @Column
-    private int nombreAppareils;
-    
-    @Column
-    private int nombrePiecesReparer;
+    private String codeReparation;
     
     @Column
     private String statut;
     
+    @Column
+    private String causeDeReparation;
+    
+    @Column
+    @Temporal(TemporalType.DATE)
+    private Date dateDeCreation;
+    
+    @Column
+    private int nombreDappareils;
+    
+    @Column
+    private int nombreDePiecesARaparer;
+    
+    // CORRECTED: +Repare relationship (1..*)
+    // One Reparation can repair multiple Appareils
+    @OneToMany(cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JoinColumn(name = "reparation_id")
+    private List<Appareil> appareils;
+    
+    // +concerne relationship: Many Reparations to one Reparateur
     @ManyToOne
     @JoinColumn(name = "reparateur_id")
     private Reparateur reparateur;
     
-    @OneToMany(mappedBy = "reparation")
-    private List<Appareil> appareils;
-    
-    @OneToOne
+    // +Alimente relationship: Many Reparations to one Caisse
+    @ManyToOne
+    @JoinColumn(name = "caisse_id")
     private Caisse caisse;
 }

@@ -1,16 +1,7 @@
 package dao;
 
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.GeneratedValue;
-import javax.persistence.GenerationType;
-import javax.persistence.Column;
-import javax.persistence.ManyToOne;
-import javax.persistence.ManyToMany;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
+import javax.persistence.*;
 import java.util.List;
-
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -22,7 +13,6 @@ import lombok.Builder;
 @AllArgsConstructor
 @Builder
 public class Appareil {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
@@ -42,15 +32,16 @@ public class Appareil {
     @Column
     private String typeAppareil;
     
-    @ManyToOne
-    @JoinColumn(name = "reparation_id")
-    private Reparation reparation;
-    
-    @ManyToMany
+    // CORRECTED: ManyToMany relationship with Piece (0..* to 0..*)
+    // One Appareil can contain many Pieces, and one Piece can belong to many Appareils
+    @ManyToMany(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @JoinTable(
         name = "appareil_piece",
         joinColumns = @JoinColumn(name = "appareil_id"),
         inverseJoinColumns = @JoinColumn(name = "piece_id")
     )
     private List<Piece> pieces;
+    
+    // Note: No direct relationship to Reparation
+    // Reparation owns the relationship with +Repare (1..*)
 }

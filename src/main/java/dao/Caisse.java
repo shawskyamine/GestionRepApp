@@ -1,7 +1,7 @@
 package dao;
 
 import javax.persistence.*;
-
+import java.util.List;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
@@ -13,12 +13,15 @@ import lombok.Builder;
 @AllArgsConstructor
 @Builder
 public class Caisse {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-
-    private double avance;
-    private double prix;
-    private double reste;
+    
+    // One Caisse is alimented by many Reparations (1..*)
+    @OneToMany(mappedBy = "caisse", cascade = CascadeType.ALL)
+    private List<Reparation> reparations;
+    
+    // One Caisse provides many Emprunts (+Fournit relationship, 1..*)
+    @OneToMany(mappedBy = "caisse", cascade = CascadeType.ALL)
+    private List<Emprunt> emprunts;
 }

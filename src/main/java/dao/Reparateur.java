@@ -1,33 +1,33 @@
 package dao;
 
-import javax.persistence.Entity;
-import javax.persistence.Column;
-import javax.persistence.OneToMany;
+import javax.persistence.*;
 import java.util.List;
-
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
+import lombok.EqualsAndHashCode;
 import lombok.experimental.SuperBuilder;
 
 @Entity
 @Data
-@EqualsAndHashCode(callSuper = true)
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class Reparateur extends Utilisateur {
-
-    @Column(length = 100)
+    @Column
     private String email;
+    
+    @Column
+    private String motDePasse;
     
     @Column
     private int pourcentage;
     
-    @Column(length = 20)
+    @Column
     private String telephone;
     
-    @OneToMany(mappedBy = "reparateur")
+    // One Reparateur can have many Reparations
+    @OneToMany(mappedBy = "reparateur", cascade = CascadeType.ALL)
     private List<Reparation> reparations;
 }

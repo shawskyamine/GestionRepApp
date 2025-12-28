@@ -1,152 +1,139 @@
 package metier;
 
-import dao.Appareil;
+import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
-import java.util.List;
+import dao.Appareil;
 
 public class GestionAppareil implements IGestionAppareil {
+
+    private EntityManager em;
     
-    private EntityManagerFactory emf = Persistence.createEntityManagerFactory("ORMDemo");
-    
+    public GestionAppareil() {
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("ClientUP");
+        em = emf.createEntityManager();
+    }
+
     @Override
     public void add(Appareil appareil) {
-        EntityManager em = emf.createEntityManager();
+        EntityTransaction tr = em.getTransaction();
         try {
-            em.getTransaction().begin();
+            tr.begin();
             em.persist(appareil);
-            em.getTransaction().commit();
+            tr.commit();
         } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+            tr.rollback();
             e.printStackTrace();
-        } finally {
-            em.close();
         }
     }
-    
+
     @Override
     public void update(Appareil appareil) {
-        EntityManager em = emf.createEntityManager();
+        EntityTransaction tr = em.getTransaction();
         try {
-            em.getTransaction().begin();
+            tr.begin();
             em.merge(appareil);
-            em.getTransaction().commit();
+            tr.commit();
         } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+            tr.rollback();
             e.printStackTrace();
-        } finally {
-            em.close();
         }
     }
-    
+
     @Override
     public void delete(Appareil appareil) {
-        EntityManager em = emf.createEntityManager();
+        EntityTransaction tr = em.getTransaction();
         try {
-            em.getTransaction().begin();
-            Appareil app = em.find(Appareil.class, appareil.getId());
-            if (app != null) {
-                em.remove(app);
-            }
-            em.getTransaction().commit();
+            tr.begin();
+            em.remove(em.contains(appareil) ? appareil : em.merge(appareil));
+            tr.commit();
         } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+            tr.rollback();
             e.printStackTrace();
-        } finally {
-            em.close();
         }
     }
-    
+
     @Override
     public Appareil findById(int id) {
-        EntityManager em = emf.createEntityManager();
-        Appareil appareil = null;
         try {
-            appareil = em.find(Appareil.class, id);
-        } finally {
-            em.close();
+            return em.find(Appareil.class, id);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return appareil;
     }
-    
+
     @Override
     public List<Appareil> findAll() {
-        EntityManager em = emf.createEntityManager();
-        List<Appareil> appareils = null;
         try {
             TypedQuery<Appareil> query = em.createQuery("SELECT a FROM Appareil a", Appareil.class);
-            appareils = query.getResultList();
-        } finally {
-            em.close();
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return appareils;
     }
-    
+
     @Override
     public List<Appareil> findByMarque(String marque) {
-        EntityManager em = emf.createEntityManager();
-        List<Appareil> appareils = null;
         try {
             TypedQuery<Appareil> query = em.createQuery(
-                "SELECT a FROM Appareil a WHERE a.marque = :marque", Appareil.class);
+                "SELECT a FROM Appareil a WHERE a.marque = :marque", 
+                Appareil.class
+            );
             query.setParameter("marque", marque);
-            appareils = query.getResultList();
-        } finally {
-            em.close();
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return appareils;
     }
-    
+
     @Override
     public List<Appareil> findByModele(String modele) {
-        EntityManager em = emf.createEntityManager();
-        List<Appareil> appareils = null;
         try {
             TypedQuery<Appareil> query = em.createQuery(
-                "SELECT a FROM Appareil a WHERE a.modele = :modele", Appareil.class);
+                "SELECT a FROM Appareil a WHERE a.modele = :modele", 
+                Appareil.class
+            );
             query.setParameter("modele", modele);
-            appareils = query.getResultList();
-        } finally {
-            em.close();
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return appareils;
     }
-    
+
     @Override
     public List<Appareil> findByImei(String imei) {
-        EntityManager em = emf.createEntityManager();
-        List<Appareil> appareils = null;
         try {
             TypedQuery<Appareil> query = em.createQuery(
-                "SELECT a FROM Appareil a WHERE a.imei = :imei", Appareil.class);
+                "SELECT a FROM Appareil a WHERE a.imei = :imei", 
+                Appareil.class
+            );
             query.setParameter("imei", imei);
-            appareils = query.getResultList();
-        } finally {
-            em.close();
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return appareils;
     }
-    
+
     @Override
     public List<Appareil> findByReparation(int reparationId) {
-        EntityManager em = emf.createEntityManager();
-        List<Appareil> appareils = null;
         try {
             TypedQuery<Appareil> query = em.createQuery(
-                "SELECT a FROM Appareil a WHERE a.reparation.id = :repId", Appareil.class);
-            query.setParameter("repId", reparationId);
-            appareils = query.getResultList();
-        } finally {
-            em.close();
+                "SELECT a FROM Appareil a JOIN a.reparation r WHERE r.id = :reparationId", 
+                Appareil.class
+            );
+            query.setParameter("reparationId", reparationId);
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return appareils;
     }
 }

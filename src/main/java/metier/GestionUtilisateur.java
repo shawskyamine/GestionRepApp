@@ -6,162 +6,129 @@ import javax.persistence.EntityManagerFactory;
 import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
 import javax.persistence.Query;
+import javax.persistence.TypedQuery;
 import dao.Utilisateur;
-import exception.ConnectionFailedException;
-
 
 public class GestionUtilisateur implements IGestionUtilisateur {
 
-	private EntityManager em;
-	public GestionUtilisateur() {
-		// TODO Auto-generated constructor stub
-		EntityManagerFactory emf= Persistence.createEntityManagerFactory("ClientUP");
-		em= emf.createEntityManager();
-	}
-	
-	@Override
-	public Utilisateur seConnecter(String identifiant, String mdp) throws ConnectionFailedException {
-		// TODO Auto-generated method stub
-		try {
-			Utilisateur u  = em.find(null, identifiant);
-			if(u != null && u.getMdp().equals(mdp)) {
-				return u;
-			}
-			
-		}catch(Exception e) {
-			throw new ConnectionFailedException("connection failed");
-		}
-		return null; //ila makhdmatch l connection z3ma les donnes mchi homa hadok anafichiw chi 7aja fl frontend
-		
-		
-	}
+    private EntityManager em;
+    
+    public GestionUtilisateur() {
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("ClientUP");
+        em = emf.createEntityManager();
+    }
 
-	@Override
-	public boolean seDeconnecter(Utilisateur u) {
-		
-		
-		//andiro chi l3iba cote frontend , wla ila khdmna b sessions ghadi n invalidiw chi session 
-		
-		return false;
-	}
+    @Override
+    public Utilisateur create(Utilisateur utilisateur) {
+        EntityTransaction tr = em.getTransaction();
+        try {
+            tr.begin();
+            em.persist(utilisateur);
+            tr.commit();
+            return utilisateur;
+        } catch (Exception e) {
+            tr.rollback();
+            e.printStackTrace();
+            return null;
+        }
+    }
 
-	
-	
+    @Override
+    public Utilisateur findById(int id) {
+        try {
+            Utilisateur u = em.find(Utilisateur.class, id);
+            return u;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public List<Utilisateur> findAll() {
+        try {
+            TypedQuery<Utilisateur> query = em.createQuery("SELECT u FROM Utilisateur u", Utilisateur.class);
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public Utilisateur findByNomAndPrenom(String nom, String prenom) {
+        try {
+            TypedQuery<Utilisateur> query = em.createQuery(
+                "SELECT u FROM Utilisateur u WHERE u.nom = :nom AND u.prenom = :prenom", 
+                Utilisateur.class
+            );
+            query.setParameter("nom", nom);
+            query.setParameter("prenom", prenom);
+            return query.getSingleResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public Utilisateur update(Utilisateur utilisateur) {
+        EntityTransaction tr = em.getTransaction();
+        try {
+            tr.begin();
+            em.merge(utilisateur);
+            tr.commit();
+            return utilisateur;
+        } catch (Exception e) {
+            tr.rollback();
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public boolean delete(int id) {
+        EntityTransaction tr = em.getTransaction();
+        try {
+            tr.begin();
+            Utilisateur utilisateur = em.find(Utilisateur.class, id);
+            if (utilisateur != null) {
+                em.remove(utilisateur);
+                tr.commit();
+                return true;
+            }
+            tr.rollback();
+            return false;
+        } catch (Exception e) {
+            tr.rollback();
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public boolean delete(Utilisateur utilisateur) {
+        EntityTransaction tr = em.getTransaction();
+        try {
+            tr.begin();
+            em.remove(utilisateur);
+            tr.commit();
+            return true;
+        } catch (Exception e) {
+            tr.rollback();
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    @Override
+    public long count() {
+        try {
+            TypedQuery<Long> query = em.createQuery("SELECT COUNT(u) FROM Utilisateur u", Long.class);
+            return query.getSingleResult();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0;
+        }
+    }
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//public class GestionUtilisateur implements IGestionUtilisateur {
-//
-//	private EntityManager em;
-//	public GestionUtilisateur() {
-//		// TODO Auto-generated constructor stub
-//		EntityManagerFactory emf= Persistence.createEntityManagerFactory("ClientUP");
-//		em= emf.createEntityManager();
-//	}
-//	@Override
-//	public void ajouterClient(Client x) {
-//		// TODO Auto-generated method stub
-//	
-//		EntityTransaction tr= em.getTransaction();
-//		try {
-//			tr.begin();
-//			em.persist(x);
-//			tr.commit();
-//			
-//		}
-//		catch(Exception e) {
-//			tr.rollback();
-//			e.printStackTrace();
-//		}
-//	}
-//
-//	@Override
-//	public Client rechercherClient(Long id) throws ClientNotFoundException {
-//		// TODO Auto-generated method stub
-//		Client x=em.find(Client.class, id);
-//		if(x!=null) 
-//			return x;
-//		else 
-//			throw new ClientNotFoundException("Client introuvable");
-//	}
-//
-//	@Override
-//	public void modifierClient( Client x) {
-//		// TODO Auto-generated method stub
-//		EntityTransaction tr= em.getTransaction();
-//		try {
-//			tr.begin();
-//			em.merge(x);
-//			tr.commit();
-//			
-//		}
-//		catch(Exception e) {
-//			tr.rollback();
-//			e.printStackTrace();
-//		}
-//		
-//	}
-//
-//	@Override
-//	public void supprimerClient(Long id) {
-//		// TODO Auto-generated method stub
-//		EntityTransaction tr= em.getTransaction();
-//		try {
-//			tr.begin();
-//			em.remove(rechercherClient(id));
-//			tr.commit();
-//			
-//		}
-//		catch(Exception e) {
-//			tr.rollback();
-//			e.printStackTrace();
-//		}
-//	}
-//
-//	@Override
-//	public List<Client> listerClient() {
-//		// TODO Auto-generated method stub
-//		Query req= em.createQuery("select c from Client c");
-//		return req.getResultList();
-//	}
-//
-//}
-
-
-

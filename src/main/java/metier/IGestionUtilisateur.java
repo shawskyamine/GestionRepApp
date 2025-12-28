@@ -1,13 +1,24 @@
 package metier;
 
+import java.util.List;
 import dao.Utilisateur;
-import exception.ConnectionFailedException;
 
 public interface IGestionUtilisateur {
-
-	
-	public Utilisateur seConnecter(String identifiant , String mdp )throws ConnectionFailedException;
-	public boolean seDeconnecter(Utilisateur u);
-	
-
+    // Create
+    Utilisateur create(Utilisateur utilisateur);
+    
+    // Read
+    Utilisateur findById(int id);
+    List<Utilisateur> findAll();
+    Utilisateur findByNomAndPrenom(String nom, String prenom);
+    
+    // Update
+    Utilisateur update(Utilisateur utilisateur);
+    
+    // Delete
+    boolean delete(int id);
+    boolean delete(Utilisateur utilisateur);
+    
+    // Count
+    long count();
 }

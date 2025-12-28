@@ -1,122 +1,109 @@
 package metier;
 
-import dao.Boutique;
+import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
+import javax.persistence.EntityTransaction;
 import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
-import java.util.List;
+import dao.Boutique;
 
 public class GestionBoutique implements IGestionBoutique {
+
+    private EntityManager em;
     
-    private EntityManagerFactory emf = Persistence.createEntityManagerFactory("ORMDemo");
-    
+    public GestionBoutique() {
+        EntityManagerFactory emf = Persistence.createEntityManagerFactory("ClientUP");
+        em = emf.createEntityManager();
+    }
+
     @Override
     public void add(Boutique boutique) {
-        EntityManager em = emf.createEntityManager();
+        EntityTransaction tr = em.getTransaction();
         try {
-            em.getTransaction().begin();
+            tr.begin();
             em.persist(boutique);
-            em.getTransaction().commit();
+            tr.commit();
         } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+            tr.rollback();
             e.printStackTrace();
-        } finally {
-            em.close();
         }
     }
-    
+
     @Override
     public void update(Boutique boutique) {
-        EntityManager em = emf.createEntityManager();
+        EntityTransaction tr = em.getTransaction();
         try {
-            em.getTransaction().begin();
+            tr.begin();
             em.merge(boutique);
-            em.getTransaction().commit();
+            tr.commit();
         } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+            tr.rollback();
             e.printStackTrace();
-        } finally {
-            em.close();
         }
     }
-    
+
     @Override
     public void delete(Boutique boutique) {
-        EntityManager em = emf.createEntityManager();
+        EntityTransaction tr = em.getTransaction();
         try {
-            em.getTransaction().begin();
-            Boutique b = em.find(Boutique.class, boutique.getId());
-            if (b != null) {
-                em.remove(b);
-            }
-            em.getTransaction().commit();
+            tr.begin();
+            em.remove(em.contains(boutique) ? boutique : em.merge(boutique));
+            tr.commit();
         } catch (Exception e) {
-            if (em.getTransaction().isActive()) {
-                em.getTransaction().rollback();
-            }
+            tr.rollback();
             e.printStackTrace();
-        } finally {
-            em.close();
         }
     }
-    
+
     @Override
     public Boutique findById(int id) {
-        EntityManager em = emf.createEntityManager();
-        Boutique boutique = null;
         try {
-            boutique = em.find(Boutique.class, id);
-        } finally {
-            em.close();
+            return em.find(Boutique.class, id);
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return boutique;
     }
-    
+
     @Override
     public List<Boutique> findAll() {
-        EntityManager em = emf.createEntityManager();
-        List<Boutique> boutiques = null;
         try {
             TypedQuery<Boutique> query = em.createQuery("SELECT b FROM Boutique b", Boutique.class);
-            boutiques = query.getResultList();
-        } finally {
-            em.close();
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return boutiques;
     }
-    
+
     @Override
     public List<Boutique> findByNom(String nom) {
-        EntityManager em = emf.createEntityManager();
-        List<Boutique> boutiques = null;
         try {
             TypedQuery<Boutique> query = em.createQuery(
-                "SELECT b FROM Boutique b WHERE b.nomBoutique = :nom", Boutique.class);
+                "SELECT b FROM Boutique b WHERE b.nomboutique = :nom", 
+                Boutique.class
+            );
             query.setParameter("nom", nom);
-            boutiques = query.getResultList();
-        } finally {
-            em.close();
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return boutiques;
     }
-    
+
     @Override
     public List<Boutique> findByProprietaire(int proprietaireId) {
-        EntityManager em = emf.createEntityManager();
-        List<Boutique> boutiques = null;
         try {
             TypedQuery<Boutique> query = em.createQuery(
-                "SELECT b FROM Boutique b WHERE b.proprietaire.id = :propId", Boutique.class);
-            query.setParameter("propId", proprietaireId);
-            boutiques = query.getResultList();
-        } finally {
-            em.close();
+                "SELECT b FROM Boutique b WHERE b.proprietaire.id = :proprietaireId", 
+                Boutique.class
+            );
+            query.setParameter("proprietaireId", proprietaireId);
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
-        return boutiques;
     }
 }
