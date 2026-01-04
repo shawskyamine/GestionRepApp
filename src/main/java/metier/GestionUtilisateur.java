@@ -12,7 +12,7 @@ import dao.Utilisateur;
 public class GestionUtilisateur implements IGestionUtilisateur {
 
     private EntityManager em;
-    
+
     public GestionUtilisateur() {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("ClientUP");
         em = emf.createEntityManager();
@@ -59,14 +59,32 @@ public class GestionUtilisateur implements IGestionUtilisateur {
     public Utilisateur findByNomAndPrenom(String nom, String prenom) {
         try {
             TypedQuery<Utilisateur> query = em.createQuery(
-                "SELECT u FROM Utilisateur u WHERE u.nom = :nom AND u.prenom = :prenom", 
-                Utilisateur.class
-            );
+                    "SELECT u FROM Utilisateur u WHERE u.nom = :nom AND u.prenom = :prenom",
+                    Utilisateur.class);
             query.setParameter("nom", nom);
             query.setParameter("prenom", prenom);
             return query.getSingleResult();
         } catch (Exception e) {
             e.printStackTrace();
+            return null;
+        }
+    }
+
+    @Override
+    public Utilisateur findByEmail(String email) {
+        try {
+            System.out.println("GestionUtilisateur.findByEmail called with: '" + email + "'");
+            TypedQuery<Utilisateur> query = em.createQuery(
+                    "SELECT u FROM Utilisateur u WHERE u.email = :email",
+                    Utilisateur.class);
+            query.setParameter("email", email);
+            Utilisateur result = query.getSingleResult();
+            System.out.println(
+                    "Query executed successfully, found user: " + (result != null ? result.getEmail() : "null"));
+            return result;
+        } catch (Exception e) {
+            System.out.println("Exception in findByEmail: " + e.getMessage());
+            // Return null if no user is found or if there's an error
             return null;
         }
     }

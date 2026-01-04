@@ -15,12 +15,6 @@ import lombok.experimental.SuperBuilder;
 @EqualsAndHashCode(callSuper = true)
 @SuperBuilder
 public class Proprietaire extends Utilisateur {
-    @Column
-    private String email;
-    
-    @Column
-    private String motDePasse;
-    
     // One Proprietaire can create many Boutiques (1..*)
     @OneToMany(mappedBy = "proprietaire", cascade = CascadeType.ALL)
     private List<Boutique> boutiques;

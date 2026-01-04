@@ -16,12 +16,20 @@ public class Piece {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private int id;
-    
+
     @Column
     private String nomPiece;
-    
+
     // CORRECTED: ManyToMany relationship with Appareil (0..* to 0..*)
     // One Piece can belong to many Appareils, and one Appareil can have many Pieces
     @ManyToMany(mappedBy = "pieces")
     private List<Appareil> appareils;
+
+    @Override
+    public String toString() {
+        return "Piece{" +
+                "id=" + id +
+                ", nomPiece='" + nomPiece + '\'' +
+                '}';
+    }
 }

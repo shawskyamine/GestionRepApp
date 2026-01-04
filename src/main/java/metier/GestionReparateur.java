@@ -8,11 +8,12 @@ import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
 import dao.Reparateur;
 import dao.Reparation;
+import dao.Caisse;
 
 public class GestionReparateur implements IGestionReparateur {
 
     private EntityManager em;
-    
+
     public GestionReparateur() {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("ClientUP");
         em = emf.createEntityManager();
@@ -23,6 +24,16 @@ public class GestionReparateur implements IGestionReparateur {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
+
+            // Create a caisse for the reparateur
+            Caisse caisse = Caisse.builder()
+                    .reparateur(reparateur)
+                    .build();
+            em.persist(caisse);
+
+            // Set the caisse to the reparateur
+            reparateur.setCaisse(caisse);
+
             em.persist(reparateur);
             tr.commit();
         } catch (Exception e) {
@@ -79,29 +90,11 @@ public class GestionReparateur implements IGestionReparateur {
     }
 
     @Override
-    public Reparateur findByIdentifiant(String identifiant) {
-        try {
-            TypedQuery<Reparateur> query = em.createQuery(
-                "SELECT r FROM Reparateur r WHERE r.identifiant = :id", 
-                Reparateur.class
-            );
-            query.setParameter("id", identifiant);
-            List<Reparateur> results = query.getResultList();
-            return results.isEmpty() ? null : results.get(0);
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-    
-    // Additional useful methods
-    
     public Reparateur findByEmail(String email) {
         try {
             TypedQuery<Reparateur> query = em.createQuery(
-                "SELECT r FROM Reparateur r WHERE r.email = :email", 
-                Reparateur.class
-            );
+                    "SELECT r FROM Reparateur r WHERE r.email = :email",
+                    Reparateur.class);
             query.setParameter("email", email);
             List<Reparateur> results = query.getResultList();
             return results.isEmpty() ? null : results.get(0);
@@ -110,13 +103,16 @@ public class GestionReparateur implements IGestionReparateur {
             return null;
         }
     }
+
+    // Additional useful methods
+
     
+
     public Reparateur findByEmailAndPassword(String email, String motDePasse) {
         try {
             TypedQuery<Reparateur> query = em.createQuery(
-                "SELECT r FROM Reparateur r WHERE r.email = :email AND r.motDePasse = :motDePasse", 
-                Reparateur.class
-            );
+                    "SELECT r FROM Reparateur r WHERE r.email = :email AND r.motDePasse = :motDePasse",
+                    Reparateur.class);
             query.setParameter("email", email);
             query.setParameter("motDePasse", motDePasse);
             List<Reparateur> results = query.getResultList();
@@ -126,7 +122,7 @@ public class GestionReparateur implements IGestionReparateur {
             return null;
         }
     }
-    
+
     public List<Reparation> findReparationsByReparateur(int reparateurId) {
         try {
             Reparateur reparateur = em.find(Reparateur.class, reparateurId);
@@ -140,13 +136,12 @@ public class GestionReparateur implements IGestionReparateur {
             return null;
         }
     }
-    
+
     public long countReparationsByReparateur(int reparateurId) {
         try {
             TypedQuery<Long> query = em.createQuery(
-                "SELECT COUNT(r) FROM Reparation r WHERE r.reparateur.id = :reparateurId", 
-                Long.class
-            );
+                    "SELECT COUNT(r) FROM Reparation r WHERE r.reparateur.id = :reparateurId",
+                    Long.class);
             query.setParameter("reparateurId", reparateurId);
             return query.getSingleResult();
         } catch (Exception e) {
@@ -154,13 +149,12 @@ public class GestionReparateur implements IGestionReparateur {
             return 0;
         }
     }
-    
+
     public List<Reparateur> findByPourcentage(int pourcentage) {
         try {
             TypedQuery<Reparateur> query = em.createQuery(
-                "SELECT r FROM Reparateur r WHERE r.pourcentage = :pourcentage", 
-                Reparateur.class
-            );
+                    "SELECT r FROM Reparateur r WHERE r.pourcentage = :pourcentage",
+                    Reparateur.class);
             query.setParameter("pourcentage", pourcentage);
             return query.getResultList();
         } catch (Exception e) {
@@ -168,13 +162,12 @@ public class GestionReparateur implements IGestionReparateur {
             return null;
         }
     }
-    
+
     public List<Reparateur> findByTelephone(String telephone) {
         try {
             TypedQuery<Reparateur> query = em.createQuery(
-                "SELECT r FROM Reparateur r WHERE r.telephone = :telephone", 
-                Reparateur.class
-            );
+                    "SELECT r FROM Reparateur r WHERE r.telephone = :telephone",
+                    Reparateur.class);
             query.setParameter("telephone", telephone);
             return query.getResultList();
         } catch (Exception e) {

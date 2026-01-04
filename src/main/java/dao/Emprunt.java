@@ -31,8 +31,6 @@ public class Emprunt {
     @Column
     private double montant;
     
-    @Column
-    private int preteurId;
     
     // Many Emprunts are provided by one Caisse
     @ManyToOne

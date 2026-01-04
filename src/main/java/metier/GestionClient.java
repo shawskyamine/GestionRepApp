@@ -17,7 +17,7 @@ public class GestionClient implements IGestionClient {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("ClientUP");
         em = emf.createEntityManager();
     }
-
+  
     @Override
     public Client create(Client client) {
         EntityTransaction tr = em.getTransaction();
@@ -112,15 +112,28 @@ public class GestionClient implements IGestionClient {
                 Client.class
             );
             query.setParameter("telephone", telephone);
-            return query.getSingleResult();
-        } catch (NoResultException e) {
-            return null;
+            List<Client> results = query.getResultList();
+            return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
-
+    
+    public List<Client> search(String keyword) {
+        try {
+            TypedQuery<Client> query = em.createQuery(
+                "SELECT c FROM Client c WHERE " +
+                "c.nom LIKE :keyword OR c.prenom LIKE :keyword OR c.telephone LIKE :keyword", 
+                Client.class
+            );
+            query.setParameter("keyword", "%" + keyword + "%");
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
     @Override
     public List<Client> findByNom(String nom) {
         try {

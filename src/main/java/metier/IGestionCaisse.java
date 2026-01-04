@@ -3,6 +3,8 @@ package metier;
 import dao.Caisse;
 import dao.Reparation;
 import dao.Emprunt;
+
+import java.util.Date;
 import java.util.List;
 
 public interface IGestionCaisse {
@@ -19,7 +21,7 @@ public interface IGestionCaisse {
     double getSolde(int caisseId);
     double getTotalCredits(int caisseId);
     double getTotalDebits(int caisseId);
-    
+    boolean addTransaction(int reparateurId, String description, String type, double amount, Date date);
     // Relationship queries
     List<Reparation> getReparationsByCaisse(int caisseId);
     List<Emprunt> getEmpruntsByCaisse(int caisseId);

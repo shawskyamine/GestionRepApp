@@ -1,5 +1,6 @@
 package metier;
 
+import java.util.Date;
 import java.util.List;
 import javax.persistence.EntityManager;
 import javax.persistence.EntityManagerFactory;
@@ -9,11 +10,12 @@ import javax.persistence.TypedQuery;
 import dao.Caisse;
 import dao.Reparation;
 import dao.Emprunt;
+import dao.Reparateur; 
 
 public class GestionCaisse implements IGestionCaisse {
 
     private EntityManager em;
-    
+
     public GestionCaisse() {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("ClientUP");
         em = emf.createEntityManager();
@@ -24,7 +26,7 @@ public class GestionCaisse implements IGestionCaisse {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
-            em.persist(caisse);
+            em.merge(caisse);
             tr.commit();
         } catch (Exception e) {
             tr.rollback();
@@ -32,6 +34,8 @@ public class GestionCaisse implements IGestionCaisse {
         }
     }
 
+    
+    
     @Override
     public void update(Caisse caisse) {
         EntityTransaction tr = em.getTransaction();
@@ -84,23 +88,23 @@ public class GestionCaisse implements IGestionCaisse {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
-            
+
             // Find the caisse
             Caisse caisse = em.find(Caisse.class, caisseId);
             if (caisse == null) {
                 throw new Exception("Caisse not found");
             }
-            
+
             // Set the relationship
             reparation.setCaisse(caisse);
-            
+
             // Persist or merge the reparation
             if (reparation.getId() == 0) {
                 em.persist(reparation);
             } else {
                 em.merge(reparation);
             }
-            
+
             tr.commit();
         } catch (Exception e) {
             if (tr != null && tr.isActive()) {
@@ -115,29 +119,29 @@ public class GestionCaisse implements IGestionCaisse {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
-            
+
             // Find the caisse
             Caisse caisse = em.find(Caisse.class, caisseId);
             if (caisse == null) {
                 throw new Exception("Caisse not found");
             }
-            
+
             // Check if caisse has enough funds
             double solde = getSolde(caisseId);
             if (solde < emprunt.getMontant()) {
                 throw new Exception("Solde insuffisant dans la caisse");
             }
-            
+
             // Set the relationship
             emprunt.setCaisse(caisse);
-            
+
             // Persist or merge the emprunt
             if (emprunt.getId() == 0) {
                 em.persist(emprunt);
             } else {
                 em.merge(emprunt);
             }
-            
+
             tr.commit();
         } catch (Exception e) {
             if (tr != null && tr.isActive()) {
@@ -163,9 +167,8 @@ public class GestionCaisse implements IGestionCaisse {
     public double getTotalCredits(int caisseId) {
         try {
             TypedQuery<Double> query = em.createQuery(
-                "SELECT COALESCE(SUM(r.montant), 0.0) FROM Reparation r WHERE r.caisse.id = :caisseId",
-                Double.class
-            );
+                    "SELECT COALESCE(SUM(r.prixTotal * (r.reparateur.pourcentage / 100.0)), 0.0) FROM Reparation r WHERE r.caisse.id = :caisseId AND r.statut = 'Terminée'",
+                    Double.class);
             query.setParameter("caisseId", caisseId);
             return query.getSingleResult();
         } catch (Exception e) {
@@ -178,9 +181,8 @@ public class GestionCaisse implements IGestionCaisse {
     public double getTotalDebits(int caisseId) {
         try {
             TypedQuery<Double> query = em.createQuery(
-                "SELECT COALESCE(SUM(e.montant), 0.0) FROM Emprunt e WHERE e.caisse.id = :caisseId",
-                Double.class
-            );
+                    "SELECT COALESCE(SUM(e.montant), 0.0) FROM Emprunt e WHERE e.caisse.id = :caisseId",
+                    Double.class);
             query.setParameter("caisseId", caisseId);
             return query.getSingleResult();
         } catch (Exception e) {
@@ -193,9 +195,8 @@ public class GestionCaisse implements IGestionCaisse {
     public List<Reparation> getReparationsByCaisse(int caisseId) {
         try {
             TypedQuery<Reparation> query = em.createQuery(
-                "SELECT r FROM Reparation r WHERE r.caisse.id = :caisseId",
-                Reparation.class
-            );
+                    "SELECT r FROM Reparation r WHERE r.caisse.id = :caisseId",
+                    Reparation.class);
             query.setParameter("caisseId", caisseId);
             return query.getResultList();
         } catch (Exception e) {
@@ -208,14 +209,72 @@ public class GestionCaisse implements IGestionCaisse {
     public List<Emprunt> getEmpruntsByCaisse(int caisseId) {
         try {
             TypedQuery<Emprunt> query = em.createQuery(
-                "SELECT e FROM Emprunt e WHERE e.caisse.id = :caisseId",
-                Emprunt.class
-            );
+                    "SELECT e FROM Emprunt e WHERE e.caisse.id = :caisseId",
+                    Emprunt.class);
             query.setParameter("caisseId", caisseId);
             return query.getResultList();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public List<Reparation> getAllReparations() {
+        try {
+            TypedQuery<Reparation> query = em.createQuery("SELECT r FROM Reparation r", Reparation.class);
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    public List<Emprunt> getAllEmprunts() {
+        try {
+            TypedQuery<Emprunt> query = em.createQuery("SELECT e FROM Emprunt e", Emprunt.class);
+            return query.getResultList();
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+    
+    @Override
+    public boolean addTransaction(int reparateurId, String description, String type, double amount, Date date) {
+        EntityTransaction tr = em.getTransaction();
+        try {
+            tr.begin();
+            
+            // Find the reparateur
+            Reparateur reparateur = em.find(Reparateur.class, reparateurId);
+            if (reparateur == null || reparateur.getCaisse() == null) {
+                if (tr.isActive()) tr.rollback();
+                return false;
+            }
+            
+            Caisse caisse = reparateur.getCaisse();
+            
+            // Create a new emprunt for debit transactions
+            if ("Débit".equalsIgnoreCase(type)) {
+                Emprunt emprunt = Emprunt.builder()
+                        .dateEmprunt(date)
+                        .montant(amount)
+                        .etat("En cours")
+                        .caisse(caisse)
+                        .build();
+                em.persist(emprunt);
+            }
+            // Note: For "Crédit" transactions, they come from Reparations, not manual entry
+            
+            tr.commit();
+            return true;
+            
+        } catch (Exception e) {
+            if (tr.isActive()) {
+                tr.rollback();
+            }
+            e.printStackTrace();
+            return false;
         }
     }
 }
