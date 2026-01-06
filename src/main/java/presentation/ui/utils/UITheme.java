@@ -201,39 +201,39 @@ public class UITheme {
 
     // Font Utilities - Modern Typography Scale
     public static Font getDisplayFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 36);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 40);
     }
 
     public static Font getTitleFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 28);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 32);
     }
 
     public static Font getSubtitleFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 20);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 24);
     }
 
     public static Font getHeadingFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 18);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 22);
     }
 
     public static Font getLabelFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 14);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 16);
     }
 
     public static Font getBodyFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.PLAIN, 14);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.PLAIN, 16);
     }
 
     public static Font getButtonFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 14);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.BOLD, 16);
     }
 
     public static Font getSmallFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.PLAIN, 12);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.PLAIN, 14);
     }
 
     public static Font getCaptionFont() {
-        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.PLAIN, 11);
+        return new Font(FONT_FAMILY.split(",")[0].trim(), Font.PLAIN, 13);
     }
 
     // Color Utilities - Helpful Methods
@@ -353,7 +353,7 @@ public class UITheme {
     public static void showStyledMessageDialog(Component parent, String message, String title, int messageType) {
         JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(parent), title, true);
         dialog.setLayout(new BorderLayout());
-        dialog.setSize(450, 200);
+        dialog.setSize(600, 250);
         dialog.setLocationRelativeTo(parent);
         dialog.getContentPane().setBackground(BG_SECONDARY);
 
@@ -387,13 +387,15 @@ public class UITheme {
 
         JLabel messageLabel = new JLabel(
                 "<html><div style='text-align: center;'>" + message.replace("\n", "<br>") + "</div></html>");
-        messageLabel.setFont(getBodyFont().deriveFont(15f));
+        messageLabel.setFont(getBodyFont().deriveFont(18f));
         messageLabel.setForeground(Color.WHITE);
         messageLabel.setHorizontalAlignment(SwingConstants.CENTER);
 
         JPanel contentPanel = new JPanel(new BorderLayout(20, 0));
         contentPanel.setBackground(BG_SECONDARY);
-        contentPanel.add(iconLabel, BorderLayout.WEST);
+        if (!iconText.isEmpty()) {
+            contentPanel.add(iconLabel, BorderLayout.WEST);
+        }
         contentPanel.add(messageLabel, BorderLayout.CENTER);
 
         messagePanel.add(contentPanel, BorderLayout.CENTER);

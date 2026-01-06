@@ -30,6 +30,10 @@ public class Reparateur extends Utilisateur {
     @OneToMany(mappedBy = "reparateur", cascade = CascadeType.ALL)
     private List<Reparation> reparations;
 
+    @ManyToOne
+    @JoinColumn(name = "boutique_id")
+    private Boutique boutique;
+
     @Override
     public String toString() {
         return "Reparateur{" +

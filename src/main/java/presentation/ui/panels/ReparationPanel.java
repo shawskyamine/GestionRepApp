@@ -13,11 +13,15 @@ import metier.GestionReparation;
 import metier.GestionReparateur;
 import metier.GestionAppareil;
 import metier.GestionPiece;
+import exception.DatabaseException;
+import exception.EntityNotFoundException;
+import metier.GestionClient;
 import dao.Reparation;
 import dao.Reparateur;
 import dao.Appareil;
 import dao.Piece;
 import dao.Proprietaire;
+import dao.Client;
 import presentation.ui.utils.AuthService;
 
 public class ReparationPanel extends JPanel {
@@ -25,15 +29,18 @@ public class ReparationPanel extends JPanel {
     private GestionReparateur gestionReparateur;
     private GestionAppareil gestionAppareil;
     private GestionPiece gestionPiece;
+    private GestionClient gestionClient;
     private RedTable reparationTable;
     private DefaultTableModel tableModel;
-    private String[] columnNames = { "ID", "Code", "Statut", "Cause", "Date Création", "Réparateur", "Prix Total" };
+    private String[] columnNames = { "ID", "Code", "Statut", "Cause", "Date Création", "Réparateur", "Client",
+            "Prix Total" };
 
     public ReparationPanel() {
         gestionReparation = new GestionReparation();
         gestionReparateur = new GestionReparateur();
         gestionAppareil = new GestionAppareil();
         gestionPiece = new GestionPiece();
+        gestionClient = new GestionClient();
         setLayout(new BorderLayout());
         setBackground(UITheme.BACKGROUND);
         setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
@@ -43,9 +50,16 @@ public class ReparationPanel extends JPanel {
     }
 
     private void initComponents() {
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        // Header - changed to vertical layout
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
         headerPanel.setOpaque(false);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+
+        // Top row: Title and CRUD buttons
+        JPanel topRow = new JPanel(new BorderLayout());
+        topRow.setOpaque(false);
+        topRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0)); // Space below
 
         JLabel title = new JLabel("Gestion des Réparations");
         title.setFont(UITheme.getTitleFont());
@@ -89,11 +103,18 @@ public class ReparationPanel extends JPanel {
         buttonContainer.add(primaryActions, BorderLayout.WEST);
         buttonContainer.add(secondaryActions, BorderLayout.EAST);
 
-        headerPanel.add(title, BorderLayout.WEST);
-        headerPanel.add(buttonContainer, BorderLayout.CENTER);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+        topRow.add(title, BorderLayout.WEST);
+        topRow.add(buttonContainer, BorderLayout.CENTER);
 
-        // Table
+        // Bottom row: Search panel
+        JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        bottomRow.setOpaque(false);
+        JPanel searchPanel = createSearchPanel();
+        bottomRow.add(searchPanel);
+
+        // Add both rows to header
+        headerPanel.add(topRow);
+        headerPanel.add(bottomRow);
         tableModel = new DefaultTableModel(columnNames, 0) {
             @Override
             public boolean isCellEditable(int row, int column) {
@@ -115,13 +136,133 @@ public class ReparationPanel extends JPanel {
         add(tableScroll, BorderLayout.CENTER);
     }
 
+    private JPanel createSearchPanel() {
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        searchPanel.setOpaque(false);
+
+        // Label for search type
+        String searchLabelText;
+        if (AuthService.isProprietaire()) {
+            searchLabelText = "ID Réparation:";
+        } else if (AuthService.isReparateur()) {
+            searchLabelText = "ID Réparation:";
+        } else {
+            searchLabelText = "Recherche:";
+        }
+
+        JLabel searchLabel = new JLabel(searchLabelText);
+        searchLabel.setFont(UITheme.getSmallFont());
+        searchLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+        // Search input field
+        JTextField searchField = new JTextField(15);
+        searchField.setFont(UITheme.getBodyFont());
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_MEDIUM, 1),
+                BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        searchField.setBackground(UITheme.SURFACE);
+
+        // Search button
+        RedButton searchButton = new RedButton("Rechercher");
+        searchButton.setPreferredSize(new Dimension(100, 32));
+
+        // Add search functionality
+        searchButton.addActionListener(e -> performSearch(searchField.getText().trim()));
+
+        // Enter key support
+        searchField.addActionListener(e -> performSearch(searchField.getText().trim()));
+
+        searchPanel.add(searchLabel);
+        searchPanel.add(searchField);
+        searchPanel.add(searchButton);
+
+        return searchPanel;
+    }
+
+    private void performSearch(String searchText) {
+        if (searchText.isEmpty()) {
+            loadReparations(); // Show all if search is empty
+            return;
+        }
+
+        tableModel.setRowCount(0);
+
+        if (AuthService.isProprietaire()) {
+            // Proprietaire searches by reparation ID
+            try {
+                int reparationId = Integer.parseInt(searchText);
+                Reparation reparation = gestionReparation.findById(reparationId);
+                addReparationToTable(reparation);
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, "Veuillez entrer un ID de réparation valide (nombre entier).",
+                        "Erreur de recherche", JOptionPane.ERROR_MESSAGE);
+            } catch (DatabaseException | EntityNotFoundException e) {
+                JOptionPane.showMessageDialog(this, "Réparation non trouvée: " + e.getMessage(),
+                        "Erreur de recherche", JOptionPane.ERROR_MESSAGE);
+            }
+        } else if (AuthService.isReparateur()) {
+            // Reparateur searches within their own reparations by reparation ID
+            try {
+                int reparationId = Integer.parseInt(searchText);
+                Reparation reparation = gestionReparation.findById(reparationId);
+                if (reparation.getReparateur() != null &&
+                        reparation.getReparateur().getId() == AuthService.getCurrentUser().getId()) {
+                    addReparationToTable(reparation);
+                } else {
+                    JOptionPane.showMessageDialog(this, "Réparation non trouvée ou accès non autorisé.",
+                            "Résultat de recherche", JOptionPane.INFORMATION_MESSAGE);
+                }
+            } catch (NumberFormatException e) {
+                JOptionPane.showMessageDialog(this, "Veuillez entrer un ID de réparation valide (nombre entier).",
+                        "Erreur de recherche", JOptionPane.ERROR_MESSAGE);
+            } catch (DatabaseException | EntityNotFoundException e) {
+                JOptionPane.showMessageDialog(this, "Réparation non trouvée: " + e.getMessage(),
+                        "Erreur de recherche", JOptionPane.ERROR_MESSAGE);
+            }
+        } else {
+            // Other roles - general search
+            loadReparations();
+        }
+    }
+
+    private void addReparationToTable(Reparation reparation) {
+        String reparateurName = reparation.getReparateur() != null
+                ? reparation.getReparateur().getNom() + " " + reparation.getReparateur().getPrenom()
+                : "N/A";
+        String clientName = reparation.getClient() != null
+                ? reparation.getClient().getNom()
+                : "N/A";
+        tableModel.addRow(new Object[] {
+                reparation.getId(),
+                reparation.getCodeReparation(),
+                reparation.getStatut(),
+                reparation.getCauseDeReparation(),
+                reparation.getDateDeCreation(),
+                reparateurName,
+                clientName,
+                reparation.getPrixTotal()
+        });
+    }
+
     private void loadReparations() {
         tableModel.setRowCount(0);
-        List<Reparation> reparations = gestionReparation.findAll();
-        if (reparations != null) {
+        List<Reparation> reparations;
+
+        try {
+            if (AuthService.isReparateur()) {
+                // Reparateur can only see their own reparations
+                reparations = gestionReparation.findByReparateur(AuthService.getCurrentUser().getId());
+            } else {
+                // Proprietaire and other roles see all reparations
+                reparations = gestionReparation.findAll();
+            }
+
             for (Reparation reparation : reparations) {
                 String reparateurName = reparation.getReparateur() != null
                         ? reparation.getReparateur().getNom() + " " + reparation.getReparateur().getPrenom()
+                        : "N/A";
+                String clientName = reparation.getClient() != null
+                        ? reparation.getClient().getNom()
                         : "N/A";
                 tableModel.addRow(new Object[] {
                         reparation.getId(),
@@ -130,9 +271,20 @@ public class ReparationPanel extends JPanel {
                         reparation.getCauseDeReparation(),
                         reparation.getDateDeCreation(),
                         reparateurName,
+                        clientName,
+                        reparation.getId(),
+                        reparation.getCodeReparation(),
+                        reparation.getStatut(),
+                        reparation.getCauseDeReparation(),
+                        reparation.getDateDeCreation(),
+                        reparateurName,
+                        clientName,
                         reparation.getPrixTotal()
                 });
             }
+        } catch (DatabaseException e) {
+            JOptionPane.showMessageDialog(this, "Erreur de base de données: " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
         }
         reparationTable.revalidate();
         reparationTable.repaint();
@@ -242,18 +394,37 @@ public class ReparationPanel extends JPanel {
         JTextField prixField = new JTextField(20);
         panel.add(prixField, gbc);
 
+        // Client Nom
+        gbc.gridx = 0;
+        gbc.gridy = 6;
+        panel.add(new JLabel("Nom du Client:"), gbc);
+        gbc.gridx = 1;
+        JTextField clientNomField = new JTextField(20);
+        panel.add(clientNomField, gbc);
+
+        // Client Telephone
+        gbc.gridx = 0;
+        gbc.gridy = 7;
+        panel.add(new JLabel("Téléphone du Client:"), gbc);
+        gbc.gridx = 1;
+        JTextField clientTelField = new JTextField(20);
+        panel.add(clientTelField, gbc);
+
         // Reparateur selection for Proprietaire
         if (AuthService.isProprietaire()) {
             gbc.gridx = 0;
-            gbc.gridy = 6;
+            gbc.gridy = 8;
             panel.add(new JLabel("Réparateur:"), gbc);
             gbc.gridx = 1;
             JComboBox<Reparateur> reparateurCombo = new JComboBox<>();
-            List<Reparateur> reparateurs = gestionReparateur.findAll();
-            if (reparateurs != null) {
+            try {
+                List<Reparateur> reparateurs = gestionReparateur.findAll();
                 for (Reparateur r : reparateurs) {
                     reparateurCombo.addItem(r);
                 }
+            } catch (DatabaseException e) {
+                JOptionPane.showMessageDialog(this, "Erreur de chargement des réparateurs: " + e.getMessage(),
+                        "Erreur", JOptionPane.ERROR_MESSAGE);
             }
             // Add proprietaire as option
             Proprietaire proprietaire = (Proprietaire) AuthService.getCurrentUser();
@@ -274,6 +445,8 @@ public class ReparationPanel extends JPanel {
         panel.putClientProperty("causeField", causeField);
         panel.putClientProperty("appareilsSpinner", appareilsSpinner);
         panel.putClientProperty("prixField", prixField);
+        panel.putClientProperty("clientNomField", clientNomField);
+        panel.putClientProperty("clientTelField", clientTelField);
 
         return panel;
     }
@@ -431,8 +604,11 @@ public class ReparationPanel extends JPanel {
                 // If proprietaire selected himself, create Reparateur if not exists
                 Proprietaire proprietaire = (Proprietaire) AuthService.getCurrentUser();
                 if (reparateur.getId() == proprietaire.getId()) {
-                    Reparateur existing = gestionReparateur.findById(proprietaire.getId());
-                    if (existing == null) {
+                    try {
+                        Reparateur existing = gestionReparateur.findById(proprietaire.getId());
+                        reparateur = existing;
+                    } catch (DatabaseException | EntityNotFoundException e) {
+                        // Reparateur doesn't exist, create one
                         Reparateur newReparateur = Reparateur.builder()
                                 .nom(proprietaire.getNom())
                                 .prenom(proprietaire.getPrenom())
@@ -442,16 +618,39 @@ public class ReparationPanel extends JPanel {
                                 .pourcentage(0)
                                 .telephone("")
                                 .build();
-                        gestionReparateur.add(newReparateur);
-                        reparateur = newReparateur;
-                    } else {
-                        reparateur = existing;
+                        try {
+                            gestionReparateur.add(newReparateur);
+                            reparateur = newReparateur;
+                        } catch (DatabaseException ex) {
+                            JOptionPane.showMessageDialog(dialog,
+                                    "Erreur lors de la création du réparateur: " + ex.getMessage(),
+                                    "Erreur", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
                     }
                 }
             } else {
                 UITheme.showStyledMessageDialog(dialog, "Accès non autorisé", "Erreur", JOptionPane.ERROR_MESSAGE);
                 return;
             }
+
+            // Get client info
+            JTextField clientNomField = (JTextField) basicPanel.getClientProperty("clientNomField");
+            JTextField clientTelField = (JTextField) basicPanel.getClientProperty("clientTelField");
+
+            if (clientNomField.getText().trim().isEmpty()) {
+                UITheme.showStyledMessageDialog(dialog, "Nom du client est obligatoire", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+                return;
+            }
+
+            Client client = Client.builder()
+                    .nom(clientNomField.getText().trim())
+                    .telephone(clientTelField.getText().trim())
+                    .role("client")
+                    .build();
+
+            gestionClient.create(client);
 
             List<Appareil> appareils = new ArrayList<>();
             int totalPieces = 0;
@@ -516,6 +715,7 @@ public class ReparationPanel extends JPanel {
                     .appareils(appareils)
                     .reparateur(reparateur)
                     .caisse(reparateur.getCaisse())
+                    .client(client)
                     .build();
 
             gestionReparation.add(newReparation);
@@ -524,6 +724,9 @@ public class ReparationPanel extends JPanel {
             UITheme.showStyledMessageDialog(this, "Réparation créée avec succès!", "Succès",
                     JOptionPane.INFORMATION_MESSAGE);
 
+        } catch (DatabaseException ex) {
+            UITheme.showStyledMessageDialog(dialog, "Erreur de base de données: " + ex.getMessage(), "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
         } catch (Exception ex) {
             UITheme.showStyledMessageDialog(dialog, "Erreur: " + ex.getMessage(), "Erreur", JOptionPane.ERROR_MESSAGE);
         }
@@ -538,19 +741,21 @@ public class ReparationPanel extends JPanel {
         }
 
         int reparationId = (int) tableModel.getValueAt(selectedRow, 0);
-        Reparation reparation = gestionReparation.findById(reparationId);
-
-        if (reparation == null) {
-            UITheme.showStyledMessageDialog(this, "Réparation non trouvée", "Erreur", JOptionPane.ERROR_MESSAGE);
+        Reparation reparation;
+        try {
+            reparation = gestionReparation.findById(reparationId);
+        } catch (DatabaseException | EntityNotFoundException e) {
+            UITheme.showStyledMessageDialog(this, "Erreur lors de la récupération de la réparation: " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "✏️ Modifier Réparation", true);
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Modifier Réparation", true);
         dialog.setLayout(new BorderLayout());
-        dialog.setSize(450, 350);
+        dialog.setSize(450, 450);
         dialog.setLocationRelativeTo(this);
 
-        JPanel formPanel = new JPanel(new GridLayout(4, 2, 10, 10));
+        JPanel formPanel = new JPanel(new GridLayout(6, 2, 10, 10));
         formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
         JLabel codeLabel = new JLabel("Code:");
@@ -563,6 +768,12 @@ public class ReparationPanel extends JPanel {
         JTextField causeField = new JTextField(reparation.getCauseDeReparation());
         JLabel prixLabel = new JLabel("Prix Total:");
         JTextField prixField = new JTextField(String.valueOf(reparation.getPrixTotal()));
+        JLabel clientNomLabel = new JLabel("Nom Client:");
+        JTextField clientNomField = new JTextField(
+                reparation.getClient() != null ? reparation.getClient().getNom() : "");
+        JLabel clientTelLabel = new JLabel("Téléphone Client:");
+        JTextField clientTelField = new JTextField(
+                reparation.getClient() != null ? reparation.getClient().getTelephone() : "");
 
         formPanel.add(codeLabel);
         formPanel.add(codeField);
@@ -572,6 +783,10 @@ public class ReparationPanel extends JPanel {
         formPanel.add(causeField);
         formPanel.add(prixLabel);
         formPanel.add(prixField);
+        formPanel.add(clientNomLabel);
+        formPanel.add(clientNomField);
+        formPanel.add(clientTelLabel);
+        formPanel.add(clientTelField);
 
         JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         RedButton saveButton = new RedButton("Enregistrer");
@@ -579,7 +794,7 @@ public class ReparationPanel extends JPanel {
 
         saveButton.addActionListener(e -> {
             if (codeField.getText().trim().isEmpty() || causeField.getText().trim().isEmpty()
-                    || prixField.getText().trim().isEmpty()) {
+                    || prixField.getText().trim().isEmpty() || clientNomField.getText().trim().isEmpty()) {
                 UITheme.showStyledMessageDialog(dialog, "Tous les champs sont obligatoires", "Erreur",
                         JOptionPane.ERROR_MESSAGE);
                 return;
@@ -592,11 +807,30 @@ public class ReparationPanel extends JPanel {
                 reparation.setStatut((String) statutCombo.getSelectedItem());
                 reparation.setCauseDeReparation(causeField.getText().trim());
                 reparation.setPrixTotal(prixTotal);
+
+                // Update client
+                if (reparation.getClient() != null) {
+                    reparation.getClient().setNom(clientNomField.getText().trim());
+                    reparation.getClient().setTelephone(clientTelField.getText().trim());
+                    gestionClient.update(reparation.getClient());
+                } else {
+                    Client client = Client.builder()
+                            .nom(clientNomField.getText().trim())
+                            .telephone(clientTelField.getText().trim())
+                            .role("client")
+                            .build();
+                    gestionClient.create(client);
+                    reparation.setClient(client);
+                }
+
                 gestionReparation.update(reparation);
                 loadReparations();
                 dialog.dispose();
             } catch (NumberFormatException ex) {
                 UITheme.showStyledMessageDialog(dialog, "Le prix total doit être un nombre valide.", "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+            } catch (DatabaseException ex) {
+                UITheme.showStyledMessageDialog(dialog, "Erreur de base de données: " + ex.getMessage(), "Erreur",
                         JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
                 UITheme.showStyledMessageDialog(dialog, "Erreur de modification: " + ex.getMessage(), "Erreur",
@@ -623,10 +857,12 @@ public class ReparationPanel extends JPanel {
         }
 
         int reparationId = (int) tableModel.getValueAt(selectedRow, 0);
-        Reparation reparation = gestionReparation.findById(reparationId);
-
-        if (reparation == null) {
-            UITheme.showStyledMessageDialog(this, "Réparation non trouvée", "Erreur", JOptionPane.ERROR_MESSAGE);
+        Reparation reparation;
+        try {
+            reparation = gestionReparation.findById(reparationId);
+        } catch (DatabaseException | EntityNotFoundException e) {
+            UITheme.showStyledMessageDialog(this, "Erreur lors de la récupération de la réparation: " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -636,8 +872,8 @@ public class ReparationPanel extends JPanel {
             try {
                 gestionReparation.delete(reparation);
                 loadReparations();
-            } catch (Exception ex) {
-                UITheme.showStyledMessageDialog(this, "Erreur de suppression: " + ex.getMessage(), "Erreur",
+            } catch (DatabaseException ex) {
+                UITheme.showStyledMessageDialog(this, "Erreur de base de données: " + ex.getMessage(), "Erreur",
                         JOptionPane.ERROR_MESSAGE);
             }
         }

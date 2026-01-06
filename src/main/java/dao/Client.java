@@ -16,4 +16,8 @@ import lombok.experimental.SuperBuilder;
 public class Client extends Utilisateur {
     @Column
     private String telephone;
+
+    @ManyToOne
+    @JoinColumn(name = "boutique_id")
+    private Boutique boutique;
 }

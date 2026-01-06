@@ -12,6 +12,8 @@ import metier.GestionProprietaire;
 import dao.Boutique;
 import dao.Proprietaire;
 import presentation.ui.utils.AuthService;
+import exception.DatabaseException;
+import exception.EntityNotFoundException;
 
 public class BoutiquePanel extends JPanel {
     private GestionBoutique gestionBoutique;
@@ -21,22 +23,46 @@ public class BoutiquePanel extends JPanel {
     private String[] columnNames = { "ID", "Nom", "Adresse", "Date Création", "Propriétaire" };
 
     public BoutiquePanel() {
-        gestionBoutique = new GestionBoutique();
-        gestionProprietaire = new GestionProprietaire();
-        setLayout(new BorderLayout());
-        setBackground(UITheme.BACKGROUND);
-        setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
+        try {
+            System.out.println("BoutiquePanel constructor started");
+            gestionBoutique = new GestionBoutique();
+            System.out.println("GestionBoutique created");
+            gestionProprietaire = new GestionProprietaire();
+            System.out.println("GestionProprietaire created");
+            setLayout(new BorderLayout());
+            setBackground(UITheme.BACKGROUND);
+            setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
+            System.out.println("Layout and background set");
 
-        initComponents();
-        loadBoutiques();
+            initComponents();
+            System.out.println("initComponents completed");
+            loadBoutiques();
+            System.out.println("loadBoutiques completed");
+            System.out.println("BoutiquePanel constructor completed successfully");
+        } catch (DatabaseException e) {
+            System.out.println("DatabaseException in BoutiquePanel constructor: " + e.getMessage());
+            e.printStackTrace();
+            // Don't re-throw, just show error message
+            JOptionPane.showMessageDialog(this,
+                    "Erreur lors de l'initialisation du panneau Boutique: " + e.getMessage(),
+                    "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void initComponents() {
         // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
         headerPanel.setOpaque(false);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
 
-        JLabel title = new JLabel("🏪 Gestion des Boutiques");
+        // Top row: Title and CRUD buttons
+        JPanel topRow = new JPanel(new BorderLayout());
+        topRow.setOpaque(false);
+        topRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0)); // Space below
+
+        JLabel title = new JLabel("Gestion des Boutiques");
         title.setFont(UITheme.getTitleFont());
         title.setForeground(UITheme.TEXT_PRIMARY);
         title.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
@@ -60,7 +86,14 @@ public class BoutiquePanel extends JPanel {
         deleteButton.addActionListener(e -> deleteBoutique());
         RedButton refreshButton = new RedButton("Actualiser");
         refreshButton.setPreferredSize(new Dimension(130, 38));
-        refreshButton.addActionListener(e -> loadBoutiques());
+        refreshButton.addActionListener(e -> {
+            try {
+                loadBoutiques();
+            } catch (DatabaseException ex) {
+                JOptionPane.showMessageDialog(this, "Erreur lors de l'actualisation: " + ex.getMessage(), "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+            }
+        });
 
         secondaryActions.add(editButton);
         secondaryActions.add(Box.createRigidArea(new Dimension(8, 0)));
@@ -73,9 +106,11 @@ public class BoutiquePanel extends JPanel {
         buttonContainer.add(primaryActions, BorderLayout.WEST);
         buttonContainer.add(secondaryActions, BorderLayout.EAST);
 
-        headerPanel.add(title, BorderLayout.WEST);
-        headerPanel.add(buttonContainer, BorderLayout.CENTER);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 24, 0));
+        topRow.add(title, BorderLayout.WEST);
+        topRow.add(buttonContainer, BorderLayout.CENTER);
+
+        // Add top row to header
+        headerPanel.add(topRow);
 
         // Table
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -99,10 +134,10 @@ public class BoutiquePanel extends JPanel {
         add(tableScroll, BorderLayout.CENTER);
     }
 
-    private void loadBoutiques() {
+    private void loadBoutiques() throws DatabaseException {
         tableModel.setRowCount(0);
-        List<Boutique> boutiques = gestionBoutique.findAll();
-        if (boutiques != null) {
+        try {
+            List<Boutique> boutiques = gestionBoutique.findAll();
             for (Boutique boutique : boutiques) {
                 String proprietaireName = boutique.getProprietaire() != null
                         ? boutique.getProprietaire().getNom() + " " + boutique.getProprietaire().getPrenom()
@@ -115,11 +150,13 @@ public class BoutiquePanel extends JPanel {
                         proprietaireName
                 });
             }
+        } catch (DatabaseException e) {
+            throw e; // Re-throw to be caught by caller
         }
     }
 
     private void showAddDialog() {
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "➕ Nouvelle Boutique", true);
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Nouvelle Boutique", true);
         dialog.setLayout(new BorderLayout());
         dialog.setSize(450, 250);
         dialog.setLocationRelativeTo(this);
@@ -168,6 +205,9 @@ public class BoutiquePanel extends JPanel {
                 gestionBoutique.add(newBoutique);
                 loadBoutiques();
                 dialog.dispose();
+            } catch (DatabaseException ex) {
+                UITheme.showStyledMessageDialog(dialog, "Erreur de base de données: " + ex.getMessage(), "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
             } catch (Exception ex) {
                 UITheme.showStyledMessageDialog(dialog, "Erreur d'ajout: " + ex.getMessage(), "Erreur",
                         JOptionPane.ERROR_MESSAGE);
@@ -193,62 +233,66 @@ public class BoutiquePanel extends JPanel {
         }
 
         int boutiqueId = (int) tableModel.getValueAt(selectedRow, 0);
-        Boutique boutique = gestionBoutique.findById(boutiqueId);
+        try {
+            Boutique boutique = gestionBoutique.findById(boutiqueId);
 
-        if (boutique == null) {
-            UITheme.showStyledMessageDialog(this, "Boutique non trouvée", "Erreur", JOptionPane.ERROR_MESSAGE);
-            return;
+            JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Modifier Boutique", true);
+            dialog.setLayout(new BorderLayout());
+            dialog.setSize(450, 250);
+            dialog.setLocationRelativeTo(this);
+
+            JPanel formPanel = new JPanel(new GridLayout(2, 2, 10, 10));
+            formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+            JLabel nomLabel = new JLabel("Nom:");
+            JTextField nomField = new JTextField(boutique.getNomboutique());
+            JLabel adresseLabel = new JLabel("Adresse:");
+            JTextField adresseField = new JTextField(boutique.getAdresse());
+
+            formPanel.add(nomLabel);
+            formPanel.add(nomField);
+            formPanel.add(adresseLabel);
+            formPanel.add(adresseField);
+
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            RedButton saveButton = new RedButton("💾 Enregistrer");
+            RedButton cancelButton = new RedButton("Annuler");
+
+            saveButton.addActionListener(e -> {
+                if (nomField.getText().trim().isEmpty() || adresseField.getText().trim().isEmpty()) {
+                    UITheme.showStyledMessageDialog(dialog, "Tous les champs sont obligatoires", "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                try {
+                    boutique.setNomboutique(nomField.getText().trim());
+                    boutique.setAdresse(adresseField.getText().trim());
+                    gestionBoutique.update(boutique);
+                    loadBoutiques();
+                    dialog.dispose();
+                } catch (DatabaseException ex) {
+                    UITheme.showStyledMessageDialog(dialog, "Erreur de base de données: " + ex.getMessage(), "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                } catch (Exception ex) {
+                    UITheme.showStyledMessageDialog(dialog, "Erreur de modification: " + ex.getMessage(), "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            });
+
+            cancelButton.addActionListener(e -> dialog.dispose());
+
+            buttonPanel.add(saveButton);
+            buttonPanel.add(cancelButton);
+
+            dialog.add(formPanel, BorderLayout.CENTER);
+            dialog.add(buttonPanel, BorderLayout.SOUTH);
+            dialog.setVisible(true);
+
+        } catch (DatabaseException ex) {
+            UITheme.showStyledMessageDialog(this, "Erreur lors de la récupération de la boutique: " + ex.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
         }
-
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "✏️ Modifier Boutique", true);
-        dialog.setLayout(new BorderLayout());
-        dialog.setSize(450, 250);
-        dialog.setLocationRelativeTo(this);
-
-        JPanel formPanel = new JPanel(new GridLayout(2, 2, 10, 10));
-        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        JLabel nomLabel = new JLabel("Nom:");
-        JTextField nomField = new JTextField(boutique.getNomboutique());
-        JLabel adresseLabel = new JLabel("Adresse:");
-        JTextField adresseField = new JTextField(boutique.getAdresse());
-
-        formPanel.add(nomLabel);
-        formPanel.add(nomField);
-        formPanel.add(adresseLabel);
-        formPanel.add(adresseField);
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        RedButton saveButton = new RedButton("💾 Enregistrer");
-        RedButton cancelButton = new RedButton("Annuler");
-
-        saveButton.addActionListener(e -> {
-            if (nomField.getText().trim().isEmpty() || adresseField.getText().trim().isEmpty()) {
-                UITheme.showStyledMessageDialog(dialog, "Tous les champs sont obligatoires", "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            try {
-                boutique.setNomboutique(nomField.getText().trim());
-                boutique.setAdresse(adresseField.getText().trim());
-                gestionBoutique.update(boutique);
-                loadBoutiques();
-                dialog.dispose();
-            } catch (Exception ex) {
-                UITheme.showStyledMessageDialog(dialog, "Erreur de modification: " + ex.getMessage(), "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        cancelButton.addActionListener(e -> dialog.dispose());
-
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
-
-        dialog.add(formPanel, BorderLayout.CENTER);
-        dialog.add(buttonPanel, BorderLayout.SOUTH);
-        dialog.setVisible(true);
     }
 
     private void deleteBoutique() {
@@ -260,23 +304,24 @@ public class BoutiquePanel extends JPanel {
         }
 
         int boutiqueId = (int) tableModel.getValueAt(selectedRow, 0);
-        Boutique boutique = gestionBoutique.findById(boutiqueId);
+        try {
+            Boutique boutique = gestionBoutique.findById(boutiqueId);
 
-        if (boutique == null) {
-            UITheme.showStyledMessageDialog(this, "Boutique non trouvée", "Erreur", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        int confirm = UITheme.showStyledConfirmDialog(this, "Supprimer la boutique: " + boutique.getNomboutique() + "?",
-                "Confirmation");
-        if (confirm == JOptionPane.YES_OPTION) {
-            try {
-                gestionBoutique.delete(boutique);
-                loadBoutiques();
-            } catch (Exception ex) {
-                UITheme.showStyledMessageDialog(this, "Erreur de suppression: " + ex.getMessage(), "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
+            int confirm = UITheme.showStyledConfirmDialog(this,
+                    "Supprimer la boutique: " + boutique.getNomboutique() + "?",
+                    "Confirmation");
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    gestionBoutique.delete(boutique);
+                    loadBoutiques();
+                } catch (DatabaseException ex) {
+                    UITheme.showStyledMessageDialog(this, "Erreur de base de données: " + ex.getMessage(), "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                }
             }
+        } catch (DatabaseException ex) {
+            UITheme.showStyledMessageDialog(this, "Erreur lors de la récupération de la boutique: " + ex.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
 }

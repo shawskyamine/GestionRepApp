@@ -57,6 +57,14 @@ public class Reparation {
     @JoinColumn(name = "caisse_id")
     private Caisse caisse;
 
+    @ManyToOne
+    @JoinColumn(name = "client_id")
+    private Client client;
+
+    @ManyToOne
+    @JoinColumn(name = "boutique_id")
+    private Boutique boutique;
+
     @Override
     public String toString() {
         return "Reparation{" +
@@ -68,6 +76,7 @@ public class Reparation {
                 ", nombreDappareils=" + nombreDappareils +
                 ", nombreDePiecesARaparer=" + nombreDePiecesARaparer +
                 ", prixTotal=" + prixTotal +
+                ", client=" + (client != null ? client.getNom() : "null") +
                 '}';
     }
 }

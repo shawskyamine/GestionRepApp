@@ -26,13 +26,13 @@ public class Utilisateur {
 
     @Column
     private String prenom;
-    
-    @Column(unique = true, nullable = false)
+
+    @Column(unique = true, nullable = true)
     private String email;
-    
-    @Column(nullable = false)
+
+    @Column(nullable = true)
     private String password;
-    
+
     @Column(nullable = false)
     private String role;
 }

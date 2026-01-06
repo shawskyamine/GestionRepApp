@@ -8,6 +8,7 @@ import presentation.ui.components.*;
 import presentation.ui.utils.UITheme;
 import metier.GestionPiece;
 import dao.Piece;
+import exception.DatabaseException;
 
 public class PiecePanel extends JPanel {
     private GestionPiece gestionPiece;
@@ -19,18 +20,25 @@ public class PiecePanel extends JPanel {
         gestionPiece = new GestionPiece();
         setLayout(new BorderLayout());
         setBackground(UITheme.BACKGROUND);
-        setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
+        setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
         initComponents();
         loadPieces();
     }
 
     private void initComponents() {
-        // Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        // Header - changed to vertical layout
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
         headerPanel.setOpaque(false);
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
 
-        JLabel title = new JLabel("⚙️ Gestion des Pièces");
+        // Top row: Title and CRUD buttons
+        JPanel topRow = new JPanel(new BorderLayout());
+        topRow.setOpaque(false);
+        topRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0)); // Space below
+
+        JLabel title = new JLabel("Gestion des Pièces");
         title.setFont(UITheme.getTitleFont());
         title.setForeground(UITheme.TEXT_PRIMARY);
         title.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
@@ -67,9 +75,11 @@ public class PiecePanel extends JPanel {
         buttonContainer.add(primaryActions, BorderLayout.WEST);
         buttonContainer.add(secondaryActions, BorderLayout.EAST);
 
-        headerPanel.add(title, BorderLayout.WEST);
-        headerPanel.add(buttonContainer, BorderLayout.CENTER);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 24, 0));
+        topRow.add(title, BorderLayout.WEST);
+        topRow.add(buttonContainer, BorderLayout.CENTER);
+
+        // Add top row to header
+        headerPanel.add(topRow);
 
         // Table
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -95,14 +105,17 @@ public class PiecePanel extends JPanel {
 
     private void loadPieces() {
         tableModel.setRowCount(0);
-        List<Piece> pieces = gestionPiece.findAll();
-        if (pieces != null) {
+        try {
+            List<Piece> pieces = gestionPiece.findAll();
             for (Piece piece : pieces) {
                 tableModel.addRow(new Object[] {
                         piece.getId(),
                         piece.getNomPiece()
                 });
             }
+        } catch (DatabaseException e) {
+            UITheme.showStyledMessageDialog(this, "Erreur de chargement des pièces: " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -140,8 +153,11 @@ public class PiecePanel extends JPanel {
                 gestionPiece.add(newPiece);
                 loadPieces();
                 dialog.dispose();
-            } catch (Exception ex) {
+            } catch (DatabaseException ex) {
                 UITheme.showStyledMessageDialog(dialog, "Erreur d'ajout: " + ex.getMessage(), "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
+            } catch (Exception ex) {
+                UITheme.showStyledMessageDialog(dialog, "Erreur inattendue: " + ex.getMessage(), "Erreur",
                         JOptionPane.ERROR_MESSAGE);
             }
         });
@@ -165,57 +181,63 @@ public class PiecePanel extends JPanel {
         }
 
         int pieceId = (int) tableModel.getValueAt(selectedRow, 0);
-        Piece piece = gestionPiece.findById(pieceId);
+        try {
+            Piece piece = gestionPiece.findById(pieceId);
 
-        if (piece == null) {
-            UITheme.showStyledMessageDialog(this, "Pièce non trouvée", "Erreur", JOptionPane.ERROR_MESSAGE);
-            return;
+            // Note: findById() now throws DatabaseException if piece is null,
+            // so we don't need this null check unless you want to handle it differently
+            JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Modifier Pièce", true);
+            dialog.setLayout(new BorderLayout());
+            dialog.setSize(400, 150);
+            dialog.setLocationRelativeTo(this);
+
+            JPanel formPanel = new JPanel(new GridLayout(1, 2, 10, 10));
+            formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
+
+            JLabel nomLabel = new JLabel("Nom de la pièce:");
+            JTextField nomField = new JTextField(piece.getNomPiece());
+
+            formPanel.add(nomLabel);
+            formPanel.add(nomField);
+
+            JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
+            RedButton saveButton = new RedButton("Enregistrer");
+            RedButton cancelButton = new RedButton("Annuler");
+
+            saveButton.addActionListener(e -> {
+                if (nomField.getText().trim().isEmpty()) {
+                    UITheme.showStyledMessageDialog(dialog, "Le nom de la pièce est obligatoire", "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                try {
+                    piece.setNomPiece(nomField.getText().trim());
+                    gestionPiece.update(piece);
+                    loadPieces();
+                    dialog.dispose();
+                } catch (DatabaseException ex) {
+                    UITheme.showStyledMessageDialog(dialog, "Erreur de modification: " + ex.getMessage(), "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                } catch (Exception ex) {
+                    UITheme.showStyledMessageDialog(dialog, "Erreur inattendue: " + ex.getMessage(), "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                }
+            });
+
+            cancelButton.addActionListener(e -> dialog.dispose());
+
+            buttonPanel.add(saveButton);
+            buttonPanel.add(cancelButton);
+
+            dialog.add(formPanel, BorderLayout.CENTER);
+            dialog.add(buttonPanel, BorderLayout.SOUTH);
+            dialog.setVisible(true);
+
+        } catch (DatabaseException ex) { // REMOVED: EntityNotFoundException
+            UITheme.showStyledMessageDialog(this, "Erreur lors de la recherche: " + ex.getMessage(), "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
         }
-
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "✏️ Modifier Pièce", true);
-        dialog.setLayout(new BorderLayout());
-        dialog.setSize(400, 150);
-        dialog.setLocationRelativeTo(this);
-
-        JPanel formPanel = new JPanel(new GridLayout(1, 2, 10, 10));
-        formPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
-
-        JLabel nomLabel = new JLabel("Nom de la pièce:");
-        JTextField nomField = new JTextField(piece.getNomPiece());
-
-        formPanel.add(nomLabel);
-        formPanel.add(nomField);
-
-        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT));
-        RedButton saveButton = new RedButton("Enregistrer");
-        RedButton cancelButton = new RedButton("Annuler");
-
-        saveButton.addActionListener(e -> {
-            if (nomField.getText().trim().isEmpty()) {
-                UITheme.showStyledMessageDialog(dialog, "Le nom de la pièce est obligatoire", "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
-                return;
-            }
-
-            try {
-                piece.setNomPiece(nomField.getText().trim());
-                gestionPiece.update(piece);
-                loadPieces();
-                dialog.dispose();
-            } catch (Exception ex) {
-                UITheme.showStyledMessageDialog(dialog, "Erreur de modification: " + ex.getMessage(), "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
-            }
-        });
-
-        cancelButton.addActionListener(e -> dialog.dispose());
-
-        buttonPanel.add(saveButton);
-        buttonPanel.add(cancelButton);
-
-        dialog.add(formPanel, BorderLayout.CENTER);
-        dialog.add(buttonPanel, BorderLayout.SOUTH);
-        dialog.setVisible(true);
     }
 
     private void deletePiece() {
@@ -227,23 +249,25 @@ public class PiecePanel extends JPanel {
         }
 
         int pieceId = (int) tableModel.getValueAt(selectedRow, 0);
-        Piece piece = gestionPiece.findById(pieceId);
+        try {
+            Piece piece = gestionPiece.findById(pieceId);
 
-        if (piece == null) {
-            UITheme.showStyledMessageDialog(this, "Pièce non trouvée", "Erreur", JOptionPane.ERROR_MESSAGE);
-            return;
-        }
-
-        int confirm = UITheme.showStyledConfirmDialog(this, "Supprimer la pièce: " + piece.getNomPiece() + "?",
-                "Confirmation");
-        if (confirm == JOptionPane.YES_OPTION) {
-            try {
-                gestionPiece.delete(piece);
-                loadPieces();
-            } catch (Exception ex) {
-                UITheme.showStyledMessageDialog(this, "Erreur de suppression: " + ex.getMessage(), "Erreur",
-                        JOptionPane.ERROR_MESSAGE);
+            // Note: findById() throws DatabaseException if piece not found,
+            // so this null check might not be necessary
+            int confirm = UITheme.showStyledConfirmDialog(this, "Supprimer la pièce: " + piece.getNomPiece() + "?",
+                    "Confirmation");
+            if (confirm == JOptionPane.YES_OPTION) {
+                try {
+                    gestionPiece.delete(piece);
+                    loadPieces();
+                } catch (DatabaseException ex) {
+                    UITheme.showStyledMessageDialog(this, "Erreur de suppression: " + ex.getMessage(), "Erreur",
+                            JOptionPane.ERROR_MESSAGE);
+                }
             }
+        } catch (DatabaseException ex) { // REMOVED: EntityNotFoundException
+            UITheme.showStyledMessageDialog(this, "Erreur lors de la recherche: " + ex.getMessage(), "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
         }
     }
 }

@@ -11,6 +11,8 @@ import dao.Reparation;
 import dao.Reparateur;
 import dao.Appareil;
 import dao.Caisse;
+import exception.DatabaseException;
+import exception.EntityNotFoundException;
 
 public class GestionReparation implements IGestionReparation {
 
@@ -29,7 +31,7 @@ public class GestionReparation implements IGestionReparation {
     }
 
     @Override
-    public void add(Reparation reparation) {
+    public void add(Reparation reparation) throws DatabaseException {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
@@ -37,12 +39,12 @@ public class GestionReparation implements IGestionReparation {
             tr.commit();
         } catch (Exception e) {
             tr.rollback();
-            e.printStackTrace();
+            throw new DatabaseException("Failed to add reparation", e);
         }
     }
 
     @Override
-    public void update(Reparation reparation) {
+    public void update(Reparation reparation) throws DatabaseException {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
@@ -50,46 +52,61 @@ public class GestionReparation implements IGestionReparation {
             tr.commit();
         } catch (Exception e) {
             tr.rollback();
-            e.printStackTrace();
+            throw new DatabaseException("Failed to update reparation", e);
         }
     }
 
     @Override
-    public void delete(Reparation reparation) {
+    public void delete(Reparation reparation) throws DatabaseException {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
-            em.remove(em.contains(reparation) ? reparation : em.merge(reparation));
+            em.remove(em.merge(reparation));
             tr.commit();
         } catch (Exception e) {
             tr.rollback();
-            e.printStackTrace();
+            throw new DatabaseException("Failed to delete reparation", e);
         }
     }
 
     @Override
-    public Reparation findById(int id) {
+    public Reparation findById(int id) throws DatabaseException, EntityNotFoundException {
         try {
-            return em.find(Reparation.class, id);
+            Reparation reparation = em.find(Reparation.class, id);
+            if (reparation == null) {
+                throw new EntityNotFoundException("Reparation not found with id: " + id);
+            }
+            return reparation;
+        } catch (EntityNotFoundException e) {
+            throw e;
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new DatabaseException("Failed to find reparation by id", e);
         }
     }
 
     @Override
-    public List<Reparation> findAll() {
+    public List<Reparation> findAll() throws DatabaseException {
         try {
             TypedQuery<Reparation> query = em.createQuery("SELECT r FROM Reparation r", Reparation.class);
             return query.getResultList();
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new DatabaseException("Failed to retrieve all reparations", e);
+        }
+    }
+
+    public List<Reparation> findAllByBoutique(dao.Boutique boutique) throws DatabaseException {
+        try {
+            TypedQuery<Reparation> query = em.createQuery("SELECT r FROM Reparation r WHERE r.boutique = :boutique",
+                    Reparation.class);
+            query.setParameter("boutique", boutique);
+            return query.getResultList();
+        } catch (Exception e) {
+            throw new DatabaseException("Failed to retrieve reparations by boutique", e);
         }
     }
 
     @Override
-    public Reparation findByCodeReparation(String code) {
+    public Reparation findByCodeReparation(String code) throws DatabaseException, EntityNotFoundException {
         System.out.println("findByCodeReparation called with code: '" + code + "'");
         try {
             TypedQuery<Reparation> query = em.createQuery(
@@ -98,16 +115,20 @@ public class GestionReparation implements IGestionReparation {
             query.setParameter("code", code);
             List<Reparation> results = query.getResultList();
             System.out.println("Query executed, results size: " + results.size());
-            return results.isEmpty() ? null : results.get(0);
+            if (results.isEmpty()) {
+                throw new EntityNotFoundException("Reparation not found with code: " + code);
+            }
+            return results.get(0);
+        } catch (EntityNotFoundException e) {
+            throw e;
         } catch (Exception e) {
             System.out.println("Exception in findByCodeReparation: " + e.getMessage());
-            e.printStackTrace();
-            return null;
+            throw new DatabaseException("Failed to find reparation by code", e);
         }
     }
 
     @Override
-    public List<Reparation> findByStatut(String statut) {
+    public List<Reparation> findByStatut(String statut) throws DatabaseException {
         try {
             TypedQuery<Reparation> query = em.createQuery(
                     "SELECT r FROM Reparation r WHERE r.statut = :statut",
@@ -115,13 +136,12 @@ public class GestionReparation implements IGestionReparation {
             query.setParameter("statut", statut);
             return query.getResultList();
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new DatabaseException("Failed to find reparations by statut", e);
         }
     }
 
     @Override
-    public List<Reparation> findByReparateur(int reparateurId) {
+    public List<Reparation> findByReparateur(int reparateurId) throws DatabaseException {
         try {
             TypedQuery<Reparation> query = em.createQuery(
                     "SELECT r FROM Reparation r WHERE r.reparateur.id = :reparateurId",
@@ -129,13 +149,12 @@ public class GestionReparation implements IGestionReparation {
             query.setParameter("reparateurId", reparateurId);
             return query.getResultList();
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new DatabaseException("Failed to find reparations by reparateur", e);
         }
     }
 
     @Override
-    public List<Reparation> findByDateRange(Date startDate, Date endDate) {
+    public List<Reparation> findByDateRange(Date startDate, Date endDate) throws DatabaseException {
         try {
             TypedQuery<Reparation> query = em.createQuery(
                     "SELECT r FROM Reparation r WHERE r.dateDeCreation BETWEEN :startDate AND :endDate",
@@ -144,8 +163,7 @@ public class GestionReparation implements IGestionReparation {
             query.setParameter("endDate", endDate);
             return query.getResultList();
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new DatabaseException("Failed to find reparations by date range", e);
         }
     }
 

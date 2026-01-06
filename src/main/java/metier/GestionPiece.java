@@ -8,6 +8,7 @@ import javax.persistence.Persistence;
 import javax.persistence.TypedQuery;
 import dao.Piece;
 import dao.Appareil;
+import exception.DatabaseException;
 
 public class GestionPiece implements IGestionPiece {
 
@@ -19,67 +20,78 @@ public class GestionPiece implements IGestionPiece {
     }
 
     @Override
-    public void add(Piece piece) {
+    public void add(Piece piece) throws DatabaseException {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
             em.persist(piece);
             tr.commit();
         } catch (Exception e) {
-            tr.rollback();
-            e.printStackTrace();
+            if (tr.isActive()) {
+                tr.rollback();
+            }
+            throw new DatabaseException("Erreur lors de l'ajout de la pièce: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public void update(Piece piece) {
+    public void update(Piece piece) throws DatabaseException {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
             em.merge(piece);
             tr.commit();
         } catch (Exception e) {
-            tr.rollback();
-            e.printStackTrace();
+            if (tr.isActive()) {
+                tr.rollback();
+            }
+            throw new DatabaseException("Erreur lors de la modification de la pièce: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public void delete(Piece piece) {
+    public void delete(Piece piece) throws DatabaseException {
         EntityTransaction tr = em.getTransaction();
         try {
             tr.begin();
             em.remove(em.contains(piece) ? piece : em.merge(piece));
             tr.commit();
         } catch (Exception e) {
-            tr.rollback();
-            e.printStackTrace();
+            if (tr.isActive()) {
+                tr.rollback();
+            }
+            throw new DatabaseException("Erreur lors de la suppression de la pièce: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public Piece findById(int id) {
+    public Piece findById(int id) throws DatabaseException {
         try {
-            return em.find(Piece.class, id);
+            Piece piece = em.find(Piece.class, id);
+            if (piece == null) {
+                throw new DatabaseException("Pièce avec ID " + id + " non trouvée");
+            }
+            return piece;
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            if (e instanceof DatabaseException) {
+                throw (DatabaseException) e;
+            }
+            throw new DatabaseException("Erreur lors de la recherche de la pièce: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public List<Piece> findAll() {
+    public List<Piece> findAll() throws DatabaseException {
         try {
             TypedQuery<Piece> query = em.createQuery("SELECT p FROM Piece p", Piece.class);
             return query.getResultList();
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new DatabaseException("Erreur lors du chargement des pièces: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public List<Piece> findByNom(String nom) {
+    public List<Piece> findByNom(String nom) throws DatabaseException {
         try {
             TypedQuery<Piece> query = em.createQuery(
                 "SELECT p FROM Piece p WHERE p.nomPiece = :nom", 
@@ -88,12 +100,12 @@ public class GestionPiece implements IGestionPiece {
             query.setParameter("nom", nom);
             return query.getResultList();
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+            throw new DatabaseException("Erreur lors de la recherche par nom: " + e.getMessage(), e);
         }
     }
     
     // Additional useful methods for ManyToMany relationship management
+    // These are not part of the interface, so they can keep their original signature
     
     public List<Piece> findByAppareil(int appareilId) {
         try {
@@ -142,7 +154,9 @@ public class GestionPiece implements IGestionPiece {
             
             tr.commit();
         } catch (Exception e) {
-            tr.rollback();
+            if (tr.isActive()) {
+                tr.rollback();
+            }
             e.printStackTrace();
         }
     }
@@ -163,7 +177,9 @@ public class GestionPiece implements IGestionPiece {
             
             tr.commit();
         } catch (Exception e) {
-            tr.rollback();
+            if (tr.isActive()) {
+                tr.rollback();
+            }
             e.printStackTrace();
         }
     }
@@ -211,6 +227,13 @@ public class GestionPiece implements IGestionPiece {
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+    
+    // Close EntityManager when done (optional but recommended)
+    public void close() {
+        if (em != null && em.isOpen()) {
+            em.close();
         }
     }
 }

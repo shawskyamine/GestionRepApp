@@ -6,8 +6,11 @@ import java.awt.*;
 import java.util.List;
 import presentation.ui.components.*;
 import presentation.ui.utils.UITheme;
+import presentation.ui.utils.AuthService;
 import metier.GestionReparateur;
 import dao.Reparateur;
+import exception.DatabaseException;
+import exception.EntityNotFoundException;
 
 public class ReparateurPanel extends JPanel {
     private GestionReparateur gestionReparateur;
@@ -26,46 +29,55 @@ public class ReparateurPanel extends JPanel {
     }
 
     private void initComponents() {
-        // Enhanced Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        // Enhanced Header - changed to vertical layout
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
         headerPanel.setOpaque(false);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+
+        // Top row: Title and CRUD buttons
+        JPanel topRow = new JPanel(new BorderLayout());
+        topRow.setOpaque(false);
+        topRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0)); // Space below
 
         JLabel title = new JLabel("Gestion des Réparateurs");
         title.setFont(UITheme.getTitleFont().deriveFont(32f));
         title.setForeground(UITheme.TEXT_PRIMARY);
 
         // Primary actions (left side)
-        JPanel primaryActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        JPanel primaryActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         primaryActions.setOpaque(false);
         RedButton addButton = new RedButton("Nouveau Réparateur");
-        addButton.setPreferredSize(new Dimension(190, 48));
+        addButton.setPreferredSize(new Dimension(140, 38));
         addButton.addActionListener(e -> showAddDialog());
         primaryActions.add(addButton);
 
         // Secondary actions (right side)
-        JPanel secondaryActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        JPanel secondaryActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         secondaryActions.setOpaque(false);
 
         RedButton editButton = new RedButton("Modifier");
-        editButton.setPreferredSize(new Dimension(140, 48));
+        editButton.setPreferredSize(new Dimension(120, 38));
         editButton.addActionListener(e -> editReparateur());
 
         RedButton deleteButton = new RedButton("Supprimer");
-        deleteButton.setPreferredSize(new Dimension(140, 48));
+        deleteButton.setPreferredSize(new Dimension(130, 38));
         deleteButton.addActionListener(e -> deleteReparateur());
 
         RedButton refreshButton = new RedButton("Actualiser");
-        refreshButton.setPreferredSize(new Dimension(140, 48));
+        refreshButton.setPreferredSize(new Dimension(130, 38));
         refreshButton.addActionListener(e -> loadReparateurs());
 
-        secondaryActions.add(editButton);
-        secondaryActions.add(deleteButton);
-        secondaryActions.add(refreshButton);
-
         RedButton caisseButton = new RedButton("Caisse");
-        caisseButton.setPreferredSize(new Dimension(120, 48));
+        caisseButton.setPreferredSize(new Dimension(120, 38));
         caisseButton.addActionListener(e -> openCaisse());
+
+        secondaryActions.add(editButton);
+        secondaryActions.add(Box.createRigidArea(new Dimension(8, 0)));
+        secondaryActions.add(deleteButton);
+        secondaryActions.add(Box.createRigidArea(new Dimension(8, 0)));
+        secondaryActions.add(refreshButton);
+        secondaryActions.add(Box.createRigidArea(new Dimension(8, 0)));
         secondaryActions.add(caisseButton);
 
         JPanel buttonContainer = new JPanel(new BorderLayout());
@@ -73,8 +85,18 @@ public class ReparateurPanel extends JPanel {
         buttonContainer.add(primaryActions, BorderLayout.WEST);
         buttonContainer.add(secondaryActions, BorderLayout.EAST);
 
-        headerPanel.add(title, BorderLayout.WEST);
-        headerPanel.add(buttonContainer, BorderLayout.CENTER);
+        topRow.add(title, BorderLayout.WEST);
+        topRow.add(buttonContainer, BorderLayout.CENTER);
+
+        // Bottom row: Search panel
+        JPanel bottomRow = new JPanel(new FlowLayout(FlowLayout.RIGHT, 0, 0));
+        bottomRow.setOpaque(false);
+        JPanel searchPanel = createSearchPanel();
+        bottomRow.add(searchPanel);
+
+        // Add both rows to header
+        headerPanel.add(topRow);
+        headerPanel.add(bottomRow);
 
         // Table
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -101,10 +123,83 @@ public class ReparateurPanel extends JPanel {
         add(tableCard, BorderLayout.CENTER);
     }
 
+    private JPanel createSearchPanel() {
+        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
+        searchPanel.setOpaque(false);
+
+        // Search input field
+        JTextField searchField = new JTextField(15);
+        searchField.setFont(UITheme.getBodyFont());
+        searchField.setBorder(BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(UITheme.BORDER_MEDIUM, 1),
+                BorderFactory.createEmptyBorder(5, 8, 5, 8)));
+        searchField.setBackground(UITheme.SURFACE);
+
+        // Search button
+        RedButton searchButton = new RedButton("Rechercher");
+        searchButton.setPreferredSize(new Dimension(100, 32));
+
+        // Label for search type
+        String searchLabelText = "Nom Réparateur:";
+
+        JLabel searchLabel = new JLabel(searchLabelText);
+        searchLabel.setFont(UITheme.getSmallFont());
+        searchLabel.setForeground(UITheme.TEXT_SECONDARY);
+
+        // Add search functionality
+        searchButton.addActionListener(e -> performSearch(searchField.getText().trim()));
+
+        // Enter key support
+        searchField.addActionListener(e -> performSearch(searchField.getText().trim()));
+
+        searchPanel.add(searchLabel);
+        searchPanel.add(searchField);
+        searchPanel.add(searchButton);
+
+        return searchPanel;
+    }
+
+    private void performSearch(String searchText) {
+        if (searchText.isEmpty()) {
+            loadReparateurs(); // Show all if search is empty
+            return;
+        }
+
+        tableModel.setRowCount(0);
+
+        // Search reparateurs by name (nom or prenom)
+        try {
+            List<Reparateur> allReparateurs = gestionReparateur.findAll();
+            for (Reparateur reparateur : allReparateurs) {
+                String fullName = (reparateur.getNom() + " " + reparateur.getPrenom()).toLowerCase();
+                if (fullName.contains(searchText.toLowerCase()) ||
+                        reparateur.getNom().toLowerCase().contains(searchText.toLowerCase()) ||
+                        reparateur.getPrenom().toLowerCase().contains(searchText.toLowerCase())) {
+                    tableModel.addRow(new Object[] {
+                            reparateur.getId(),
+                            reparateur.getNom(),
+                            reparateur.getPrenom(),
+                            reparateur.getEmail(),
+                            reparateur.getTelephone(),
+                            reparateur.getPourcentage() + "%"
+                    });
+                }
+            }
+        } catch (DatabaseException e) {
+            JOptionPane.showMessageDialog(this, "Erreur de base de données: " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
+        }
+
+        if (tableModel.getRowCount() == 0) {
+            JOptionPane.showMessageDialog(this, "Aucun réparateur trouvé avec ce nom.",
+                    "Résultat de recherche", JOptionPane.INFORMATION_MESSAGE);
+        }
+    }
+
     private void loadReparateurs() {
         tableModel.setRowCount(0);
-        List<Reparateur> reparateurs = gestionReparateur.findAll();
-        if (reparateurs != null) {
+        try {
+            List<Reparateur> reparateurs = gestionReparateur.findAll();
             for (Reparateur reparateur : reparateurs) {
                 tableModel.addRow(new Object[] {
                         reparateur.getId(),
@@ -115,6 +210,9 @@ public class ReparateurPanel extends JPanel {
                         reparateur.getPourcentage() + "%"
                 });
             }
+        } catch (DatabaseException e) {
+            JOptionPane.showMessageDialog(this, "Erreur de base de données: " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
         }
     }
 
@@ -241,8 +339,8 @@ public class ReparateurPanel extends JPanel {
                 dialog.dispose();
                 UITheme.showStyledMessageDialog(this, "Réparateur créé avec succès!", "Succès",
                         JOptionPane.INFORMATION_MESSAGE);
-            } catch (Exception ex) {
-                UITheme.showStyledMessageDialog(dialog, "Erreur: " + ex.getMessage(), "Erreur",
+            } catch (DatabaseException ex) {
+                UITheme.showStyledMessageDialog(dialog, "Erreur de base de données: " + ex.getMessage(), "Erreur",
                         JOptionPane.ERROR_MESSAGE);
             }
         });
@@ -266,14 +364,16 @@ public class ReparateurPanel extends JPanel {
         }
 
         int reparateurId = (int) tableModel.getValueAt(selectedRow, 0);
-        Reparateur reparateur = gestionReparateur.findById(reparateurId);
-
-        if (reparateur == null) {
-            UITheme.showStyledMessageDialog(this, "Réparateur non trouvé", "Erreur", JOptionPane.ERROR_MESSAGE);
+        Reparateur reparateur;
+        try {
+            reparateur = gestionReparateur.findById(reparateurId);
+        } catch (DatabaseException | EntityNotFoundException e) {
+            UITheme.showStyledMessageDialog(this, "Erreur lors de la récupération du réparateur: " + e.getMessage(),
+                    "Erreur", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
-        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "✏️ Modifier Réparateur", true);
+        JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this), "Modifier Réparateur", true);
         dialog.setLayout(new BorderLayout());
         dialog.setSize(520, 420);
         dialog.setLocationRelativeTo(this);
@@ -384,8 +484,8 @@ public class ReparateurPanel extends JPanel {
                 dialog.dispose();
                 UITheme.showStyledMessageDialog(this, "Réparateur modifié avec succès!", "Succès",
                         JOptionPane.INFORMATION_MESSAGE);
-            } catch (Exception ex) {
-                UITheme.showStyledMessageDialog(dialog, "Erreur: " + ex.getMessage(), "Erreur",
+            } catch (DatabaseException ex) {
+                UITheme.showStyledMessageDialog(dialog, "Erreur de base de données: " + ex.getMessage(), "Erreur",
                         JOptionPane.ERROR_MESSAGE);
             }
         });
@@ -414,18 +514,15 @@ public class ReparateurPanel extends JPanel {
 
         if (confirm == JOptionPane.YES_OPTION) {
             int reparateurId = (int) tableModel.getValueAt(selectedRow, 0);
-            Reparateur reparateur = gestionReparateur.findById(reparateurId);
-
-            if (reparateur != null) {
-                try {
-                    gestionReparateur.delete(reparateur);
-                    loadReparateurs();
-                    UITheme.showStyledMessageDialog(this, "Réparateur supprimé avec succès!", "Succès",
-                            JOptionPane.INFORMATION_MESSAGE);
-                } catch (Exception ex) {
-                    UITheme.showStyledMessageDialog(this, "Erreur lors de la suppression: " + ex.getMessage(), "Erreur",
-                            JOptionPane.ERROR_MESSAGE);
-                }
+            try {
+                Reparateur reparateur = gestionReparateur.findById(reparateurId);
+                gestionReparateur.delete(reparateur);
+                loadReparateurs();
+                UITheme.showStyledMessageDialog(this, "Réparateur supprimé avec succès!", "Succès",
+                        JOptionPane.INFORMATION_MESSAGE);
+            } catch (DatabaseException | EntityNotFoundException ex) {
+                UITheme.showStyledMessageDialog(this, "Erreur lors de la suppression: " + ex.getMessage(), "Erreur",
+                        JOptionPane.ERROR_MESSAGE);
             }
         }
     }

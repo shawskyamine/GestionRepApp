@@ -8,6 +8,8 @@ import metier.GestionReparation;
 import dao.Reparation;
 import dao.Appareil;
 import dao.Piece;
+import exception.DatabaseException;
+import exception.EntityNotFoundException;
 
 public class ClientConsultationDialog extends JDialog {
     private GestionReparation gestionReparation;
@@ -15,7 +17,7 @@ public class ClientConsultationDialog extends JDialog {
     private JPanel detailsPanel;
 
     public ClientConsultationDialog(Frame parent) {
-        super(parent, "🔍 Suivre ma Réparation", true);
+        super(parent, "Suivre ma Réparation", true);
         System.out.println("ClientConsultationDialog constructor called");
         gestionReparation = new GestionReparation();
 
@@ -33,7 +35,7 @@ public class ClientConsultationDialog extends JDialog {
         headerPanel.setBackground(UITheme.PRIMARY);
         headerPanel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20));
 
-        JLabel title = new JLabel("🔍 Suivre ma Réparation");
+        JLabel title = new JLabel("Suivre ma Réparation");
         title.setFont(UITheme.getTitleFont());
         title.setForeground(Color.WHITE);
 
@@ -49,7 +51,7 @@ public class ClientConsultationDialog extends JDialog {
         codeField = new JTextField(20);
         codeField.setFont(UITheme.getBodyFont());
 
-        RedButton searchButton = new RedButton("🔍 Rechercher");
+        RedButton searchButton = new RedButton("Rechercher");
         searchButton.addActionListener(e -> {
             System.out.println("Search button clicked");
             searchReparation();
@@ -90,17 +92,23 @@ public class ClientConsultationDialog extends JDialog {
         String code = codeField.getText().trim();
         System.out.println("Code entered: '" + code + "'");
 
-        System.out.println("Searching for reparation with code: " + code);
-        Reparation reparation = gestionReparation.findByCodeReparation(code);
-        System.out.println("Reparation found: " + (reparation != null ? reparation.getCodeReparation() : "null"));
-
-        if (reparation == null) {
-            UITheme.showStyledMessageDialog(this, "Réparation non trouvée avec ce code", "Non trouvée",
-                    JOptionPane.ERROR_MESSAGE);
+        if (code.isEmpty()) {
+            UITheme.showStyledMessageDialog(this, "Veuillez entrer un code de réparation", "Code manquant",
+                    JOptionPane.WARNING_MESSAGE);
             return;
         }
 
-        displayReparationDetails(reparation);
+        try {
+            System.out.println("Searching for reparation with code: " + code);
+            Reparation reparation = gestionReparation.findByCodeReparation(code);
+            System.out.println("Reparation found: " + (reparation != null ? reparation.getCodeReparation() : "null"));
+
+            displayReparationDetails(reparation);
+        } catch (Exception e) {
+            System.out.println("Exception in searchReparation: " + e.getMessage());
+            UITheme.showStyledMessageDialog(this, "Erreur lors de la recherche: " + e.getMessage(), "Erreur",
+                    JOptionPane.ERROR_MESSAGE);
+        }
     }
 
     private void displayReparationDetails(Reparation reparation) {

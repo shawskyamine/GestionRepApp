@@ -25,6 +25,10 @@ public class Piece {
     @ManyToMany(mappedBy = "pieces")
     private List<Appareil> appareils;
 
+    @ManyToOne
+    @JoinColumn(name = "boutique_id")
+    private Boutique boutique;
+
     @Override
     public String toString() {
         return "Piece{" +

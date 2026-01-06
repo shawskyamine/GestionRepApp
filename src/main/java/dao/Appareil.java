@@ -39,6 +39,10 @@ public class Appareil {
     @JoinTable(name = "appareil_piece", joinColumns = @JoinColumn(name = "appareil_id"), inverseJoinColumns = @JoinColumn(name = "piece_id"))
     private List<Piece> pieces;
 
+    @ManyToOne
+    @JoinColumn(name = "boutique_id")
+    private Boutique boutique;
+
     // Note: No direct relationship to Reparation
     // Reparation owns the relationship with +Repare (1..*)
 

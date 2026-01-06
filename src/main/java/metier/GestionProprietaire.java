@@ -12,7 +12,7 @@ import dao.Boutique;
 public class GestionProprietaire implements IGestionProprietaire {
 
     private EntityManager em;
-    
+
     public GestionProprietaire() {
         EntityManagerFactory emf = Persistence.createEntityManagerFactory("ClientUP");
         em = emf.createEntityManager();
@@ -82,9 +82,8 @@ public class GestionProprietaire implements IGestionProprietaire {
     public List<Proprietaire> findByEmail(String email) {
         try {
             TypedQuery<Proprietaire> query = em.createQuery(
-                "SELECT p FROM Proprietaire p WHERE p.email = :email", 
-                Proprietaire.class
-            );
+                    "SELECT p FROM Proprietaire p WHERE p.email = :email",
+                    Proprietaire.class);
             query.setParameter("email", email);
             return query.getResultList();
         } catch (Exception e) {
@@ -97,9 +96,8 @@ public class GestionProprietaire implements IGestionProprietaire {
     public Proprietaire findByEmailAndPassword(String email, String motDePasse) {
         try {
             TypedQuery<Proprietaire> query = em.createQuery(
-                "SELECT p FROM Proprietaire p WHERE p.email = :email AND p.motDePasse = :motDePasse", 
-                Proprietaire.class
-            );
+                    "SELECT p FROM Proprietaire p WHERE p.email = :email AND p.motDePasse = :motDePasse",
+                    Proprietaire.class);
             query.setParameter("email", email);
             query.setParameter("motDePasse", motDePasse);
             return query.getSingleResult();
@@ -108,9 +106,9 @@ public class GestionProprietaire implements IGestionProprietaire {
             return null;
         }
     }
-    
+
     // Additional useful methods for OneToMany relationship management
-    
+
     public List<Boutique> findBoutiquesByProprietaire(int proprietaireId) {
         try {
             Proprietaire proprietaire = em.find(Proprietaire.class, proprietaireId);
@@ -125,13 +123,12 @@ public class GestionProprietaire implements IGestionProprietaire {
             return null;
         }
     }
-    
+
     public long countBoutiquesByProprietaire(int proprietaireId) {
         try {
             TypedQuery<Long> query = em.createQuery(
-                "SELECT COUNT(b) FROM Boutique b WHERE b.proprietaire.id = :proprietaireId", 
-                Long.class
-            );
+                    "SELECT COUNT(b) FROM Boutique b WHERE b.proprietaire.id = :proprietaireId",
+                    Long.class);
             query.setParameter("proprietaireId", proprietaireId);
             return query.getSingleResult();
         } catch (Exception e) {
@@ -139,30 +136,63 @@ public class GestionProprietaire implements IGestionProprietaire {
             return 0;
         }
     }
-    
+
     public List<Proprietaire> findProprietairesWithBoutiques() {
         try {
             TypedQuery<Proprietaire> query = em.createQuery(
-                "SELECT DISTINCT p FROM Proprietaire p JOIN FETCH p.boutiques", 
-                Proprietaire.class
-            );
+                    "SELECT DISTINCT p FROM Proprietaire p JOIN FETCH p.boutiques",
+                    Proprietaire.class);
             return query.getResultList();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
         }
     }
-    
+
     public List<Proprietaire> findProprietairesWithoutBoutiques() {
         try {
             TypedQuery<Proprietaire> query = em.createQuery(
-                "SELECT p FROM Proprietaire p WHERE p.boutiques IS EMPTY", 
-                Proprietaire.class
-            );
+                    "SELECT p FROM Proprietaire p WHERE p.boutiques IS EMPTY",
+                    Proprietaire.class);
             return query.getResultList();
         } catch (Exception e) {
             e.printStackTrace();
             return null;
+        }
+    }
+
+    public String signUp(String nom, String prenom, String email, String password, String confirmPassword) {
+        if (nom.isEmpty() || prenom.isEmpty() || email.isEmpty() || password.isEmpty()) {
+            return "Tous les champs sont obligatoires";
+        }
+
+        if (!password.equals(confirmPassword)) {
+            return "Les mots de passe ne correspondent pas";
+        }
+
+        if (password.length() < 6) {
+            return "Le mot de passe doit contenir au moins 6 caractères";
+        }
+
+        // Check if email already exists
+        GestionUtilisateur gestionUtilisateur = new GestionUtilisateur();
+        if (gestionUtilisateur.findByEmail(email) != null) {
+            return "Cet email est déjà utilisé";
+        }
+
+        try {
+            Proprietaire proprietaire = Proprietaire.builder()
+                    .nom(nom)
+                    .prenom(prenom)
+                    .email(email)
+                    .password(password)
+                    .role("PROPRIETAIRE")
+                    .build();
+
+            add(proprietaire);
+            return null;
+        } catch (Exception e) {
+            return "Erreur lors de la création du compte: " + e.getMessage();
         }
     }
 }

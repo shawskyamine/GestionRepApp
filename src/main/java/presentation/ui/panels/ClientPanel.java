@@ -19,7 +19,7 @@ public class ClientPanel extends JPanel {
     public ClientPanel() {
         setLayout(new BorderLayout());
         setBackground(UITheme.BACKGROUND);
-        setBorder(BorderFactory.createEmptyBorder(32, 40, 32, 40));
+        setBorder(BorderFactory.createEmptyBorder(10, 20, 10, 20));
 
         initComponents();
         loadRealData();
@@ -27,37 +27,46 @@ public class ClientPanel extends JPanel {
 
     private void initComponents() {
         // Enhanced Header
-        JPanel headerPanel = new JPanel(new BorderLayout());
+        JPanel headerPanel = new JPanel();
+        headerPanel.setLayout(new BoxLayout(headerPanel, BoxLayout.Y_AXIS));
         headerPanel.setOpaque(false);
-        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 40, 0));
+        headerPanel.setBorder(BorderFactory.createEmptyBorder(0, 0, 20, 0));
+
+        // Top row: Title and CRUD buttons
+        JPanel topRow = new JPanel(new BorderLayout());
+        topRow.setOpaque(false);
+        topRow.setBorder(BorderFactory.createEmptyBorder(0, 0, 10, 0)); // Space below
 
         JLabel title = new JLabel("Gestion des Clients");
-        title.setFont(UITheme.getTitleFont().deriveFont(32f));
+        title.setFont(UITheme.getTitleFont());
         title.setForeground(UITheme.TEXT_PRIMARY);
+        title.setBorder(BorderFactory.createEmptyBorder(0, 0, 0, 20));
 
         // Primary actions
-        JPanel primaryActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 12, 0));
+        JPanel primaryActions = new JPanel(new FlowLayout(FlowLayout.LEFT, 8, 0));
         primaryActions.setOpaque(false);
         RedButton addButton = new RedButton("Nouveau Client");
-        addButton.setPreferredSize(new Dimension(170, 48));
+        addButton.setPreferredSize(new Dimension(140, 38));
         addButton.addActionListener(e -> showAddDialog());
         primaryActions.add(addButton);
 
         // Secondary actions
-        JPanel secondaryActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 12, 0));
+        JPanel secondaryActions = new JPanel(new FlowLayout(FlowLayout.RIGHT, 8, 0));
         secondaryActions.setOpaque(false);
         RedButton editButton = new RedButton("Modifier");
-        editButton.setPreferredSize(new Dimension(140, 48));
+        editButton.setPreferredSize(new Dimension(120, 38));
         editButton.addActionListener(e -> editClient());
         RedButton deleteButton = new RedButton("Supprimer");
-        deleteButton.setPreferredSize(new Dimension(140, 48));
+        deleteButton.setPreferredSize(new Dimension(130, 38));
         deleteButton.addActionListener(e -> deleteClient());
         RedButton refreshButton = new RedButton("Actualiser");
-        refreshButton.setPreferredSize(new Dimension(140, 48));
+        refreshButton.setPreferredSize(new Dimension(130, 38));
         refreshButton.addActionListener(e -> loadRealData());
 
         secondaryActions.add(editButton);
+        secondaryActions.add(Box.createRigidArea(new Dimension(8, 0)));
         secondaryActions.add(deleteButton);
+        secondaryActions.add(Box.createRigidArea(new Dimension(8, 0)));
         secondaryActions.add(refreshButton);
 
         JPanel buttonContainer = new JPanel(new BorderLayout());
@@ -65,20 +74,21 @@ public class ClientPanel extends JPanel {
         buttonContainer.add(primaryActions, BorderLayout.WEST);
         buttonContainer.add(secondaryActions, BorderLayout.EAST);
 
-        headerPanel.add(title, BorderLayout.WEST);
-        headerPanel.add(buttonContainer, BorderLayout.CENTER);
+        topRow.add(title, BorderLayout.WEST);
+        topRow.add(buttonContainer, BorderLayout.CENTER);
 
-        // Enhanced Search Panel
+        // Bottom row: Enhanced Search Panel
         RedCard searchCard = new RedCard();
         searchCard.setLayout(new BorderLayout());
-        searchCard.setBorder(BorderFactory.createEmptyBorder(24, 28, 24, 28));
+        searchCard.setBorder(BorderFactory.createEmptyBorder(16, 24, 16, 24));
 
-        JPanel searchPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
-        searchPanel.setOpaque(false);
+        JPanel searchContentPanel = new JPanel(new FlowLayout(FlowLayout.LEFT, 16, 0));
+        searchContentPanel.setOpaque(false);
 
         JLabel searchLabel = new JLabel("Rechercher:");
         searchLabel.setFont(UITheme.getLabelFont());
         searchLabel.setForeground(UITheme.TEXT_SECONDARY);
+        
         JTextField searchField = new JTextField(25);
         searchField.setPreferredSize(new Dimension(380, 48));
         searchField.setFont(UITheme.getBodyFont().deriveFont(14f));
@@ -95,15 +105,19 @@ public class ClientPanel extends JPanel {
             loadRealData();
         });
 
-        searchPanel.add(searchLabel);
-        searchPanel.add(Box.createRigidArea(new Dimension(12, 0)));
-        searchPanel.add(searchField);
-        searchPanel.add(Box.createRigidArea(new Dimension(12, 0)));
-        searchPanel.add(searchButton);
-        searchPanel.add(Box.createRigidArea(new Dimension(8, 0)));
-        searchPanel.add(clearButton);
+        searchContentPanel.add(searchLabel);
+        searchContentPanel.add(Box.createRigidArea(new Dimension(12, 0)));
+        searchContentPanel.add(searchField);
+        searchContentPanel.add(Box.createRigidArea(new Dimension(12, 0)));
+        searchContentPanel.add(searchButton);
+        searchContentPanel.add(Box.createRigidArea(new Dimension(8, 0)));
+        searchContentPanel.add(clearButton);
 
-        searchCard.add(searchPanel, BorderLayout.CENTER);
+        searchCard.add(searchContentPanel, BorderLayout.CENTER);
+
+        // Add both rows to header
+        headerPanel.add(topRow);
+        headerPanel.add(searchCard);
 
         // Table
         tableModel = new DefaultTableModel(columnNames, 0) {
@@ -116,26 +130,13 @@ public class ClientPanel extends JPanel {
         clientTable = new RedTable();
         clientTable.setModel(tableModel);
 
-        RedCard tableCard = new RedCard();
-        tableCard.setLayout(new BorderLayout());
-        tableCard.setBorder(BorderFactory.createEmptyBorder(2, 2, 2, 2));
-
         JScrollPane tableScroll = new JScrollPane(clientTable);
         tableScroll.setBorder(BorderFactory.createEmptyBorder());
         tableScroll.setBackground(UITheme.BACKGROUND);
-        tableCard.add(tableScroll, BorderLayout.CENTER);
-
-        // Main content panel
-        JPanel centerPanel = new JPanel();
-        centerPanel.setLayout(new BoxLayout(centerPanel, BoxLayout.Y_AXIS));
-        centerPanel.setOpaque(false);
-        centerPanel.add(searchCard);
-        centerPanel.add(Box.createRigidArea(new Dimension(0, 24)));
-        centerPanel.add(tableCard);
 
         // Assemble
         add(headerPanel, BorderLayout.NORTH);
-        add(centerPanel, BorderLayout.CENTER);
+        add(tableScroll, BorderLayout.CENTER);
     }
 
     private void loadRealData() {
@@ -326,7 +327,7 @@ public class ClientPanel extends JPanel {
 
                 // Create edit dialog
                 JDialog dialog = new JDialog((Frame) SwingUtilities.getWindowAncestor(this),
-                        "✏️ Modifier Client", true);
+                        "Modifier Client", true);
                 dialog.setLayout(new BorderLayout());
                 dialog.setSize(450, 350);
                 dialog.setLocationRelativeTo(this);
@@ -370,12 +371,50 @@ public class ClientPanel extends JPanel {
 
                 saveButton.addActionListener(e -> {
                     try {
+                        // Validate fields before updating
+                        String nom = fields[0].getText().trim();
+                        String prenom = fields[1].getText().trim();
+                        String email = fields[2].getText().trim();
+                        String password = new String(passwordField.getPassword()).trim();
+                        String telephone = fields[4].getText().trim();
+
+                        // Validate
+                        String nameError = Validator.getNameError(nom);
+                        if (nameError != null) {
+                            UITheme.showStyledMessageDialog(dialog, nameError, "Erreur de validation", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+
+                        String prenomError = Validator.getNameError(prenom);
+                        if (prenomError != null) {
+                            UITheme.showStyledMessageDialog(dialog, "Prénom: " + prenomError, "Erreur de validation", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+
+                        String emailError = Validator.getEmailError(email);
+                        if (emailError != null) {
+                            UITheme.showStyledMessageDialog(dialog, emailError, "Erreur de validation", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+
+                        String passwordError = Validator.getPasswordError(password);
+                        if (passwordError != null) {
+                            UITheme.showStyledMessageDialog(dialog, passwordError, "Erreur de validation", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+
+                        String phoneError = Validator.getPhoneError(telephone);
+                        if (phoneError != null) {
+                            UITheme.showStyledMessageDialog(dialog, phoneError, "Erreur de validation", JOptionPane.ERROR_MESSAGE);
+                            return;
+                        }
+
                         // Update client
-                        client.setNom(fields[0].getText().trim());
-                        client.setPrenom(fields[1].getText().trim());
-                        client.setEmail(fields[2].getText().trim());
-                        client.setPassword(new String(passwordField.getPassword()).trim());
-                        client.setTelephone(fields[4].getText().trim());
+                        client.setNom(nom);
+                        client.setPrenom(prenom);
+                        client.setEmail(email);
+                        client.setPassword(password);
+                        client.setTelephone(telephone);
 
                         gestionClient.update(client);
 

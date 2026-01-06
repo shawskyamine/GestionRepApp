@@ -6,6 +6,8 @@ import presentation.ui.panels.*;
 import presentation.ui.components.*;
 import presentation.ui.utils.UITheme;
 import presentation.ui.utils.AuthService;
+import exception.DatabaseException;
+import exception.AuthorizationException;
 
 public class MainFrame extends JFrame {
     private CardLayout cardLayout;
@@ -24,7 +26,18 @@ public class MainFrame extends JFrame {
                 return;
             }
 
-            System.out.println("User is logged in, initializing MainFrame");
+            // Check if proprietaire has selected a boutique
+            if (AuthService.isProprietaire() && AuthService.getSelectedBoutique() == null) {
+                System.out.println("Proprietaire logged in but no boutique selected, showing boutique selection");
+                System.out.println("Current user: " + AuthService.getCurrentUser());
+                System.out.println("Is proprietaire: " + AuthService.isProprietaire());
+                System.out.println("Selected boutique: " + AuthService.getSelectedBoutique());
+                new BoutiqueSelectionFrame().setVisible(true);
+                return;
+            }
+
+            System.out.println("User is logged in and has selected boutique (if proprietaire), initializing MainFrame");
+            System.out.println("Selected boutique: " + AuthService.getSelectedBoutiqueName());
             UITheme.applyTheme();
 
             setTitle("Gestion Réparation - " + AuthService.getUserName());
@@ -76,12 +89,37 @@ public class MainFrame extends JFrame {
             System.out.println("ReparationPanel created");
             mainPanel.add(new PiecePanel(), "PIECES");
             System.out.println("PiecePanel created");
-            mainPanel.add(new CaissePanel(), "CAISSE");
-            System.out.println("CaissePanel created");
-            mainPanel.add(new BoutiquePanel(), "BOUTIQUES");
-            System.out.println("BoutiquePanel created");
-            mainPanel.add(new ReparateurPanel(), "REPARATEURS");
-            System.out.println("ReparateurPanel created");
+            
+            // CaissePanel - handle exceptions properly
+            try {
+                mainPanel.add(new CaissePanel(), "CAISSE");
+                System.out.println("CaissePanel created");
+            } catch (Exception e) {
+                System.out.println("Exception creating CaissePanel: " + e.getMessage());
+                e.printStackTrace();
+                // Don't show error dialog here, just continue without CaissePanel
+                // Some users might not have access to Caisse
+            }
+            
+            // BoutiquePanel - handle exceptions properly
+            try {
+                mainPanel.add(new BoutiquePanel(), "BOUTIQUES");
+                System.out.println("BoutiquePanel created");
+            } catch (Exception e) {
+                System.out.println("Exception creating BoutiquePanel: " + e.getMessage());
+                e.printStackTrace();
+                // Continue without BoutiquePanel
+            }
+            
+            // ReparateurPanel - handle exceptions properly
+            try {
+                mainPanel.add(new ReparateurPanel(), "REPARATEURS");
+                System.out.println("ReparateurPanel created");
+            } catch (Exception e) {
+                System.out.println("Exception creating ReparateurPanel: " + e.getMessage());
+                e.printStackTrace();
+                // Continue without ReparateurPanel
+            }
 
             JScrollPane scrollPane = new JScrollPane(mainPanel);
             scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
@@ -102,15 +140,31 @@ public class MainFrame extends JFrame {
     private JPanel createHeader() {
         JPanel header = new JPanel(new BorderLayout());
         header.setBackground(UITheme.BG_PRIMARY);
-        header.setPreferredSize(new Dimension(1600, 80));
+        header.setPreferredSize(new Dimension(1600, 120));
         header.setBorder(BorderFactory.createCompoundBorder(
                 BorderFactory.createMatteBorder(0, 0, 1, 0, UITheme.BORDER_DARK),
-                BorderFactory.createEmptyBorder(16, 32, 16, 32)));
+                BorderFactory.createEmptyBorder(20, 32, 20, 32)));
 
+        // Left side - Main title
         JLabel title = new JLabel("GESTION DE RÉPARATION");
         title.setFont(UITheme.getTitleFont().deriveFont(26f));
         title.setForeground(UITheme.TEXT_PRIMARY);
 
+        // Center - Boutique name (for proprietaires)
+        JPanel centerPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 0, 10)); // Center with 10px vertical gap
+        centerPanel.setOpaque(false);
+
+        if (AuthService.isProprietaire() && AuthService.getSelectedBoutiqueName() != null) {
+            System.out.println("Adding BoutiqueBadge to header with name: " + AuthService.getSelectedBoutiqueName());
+            // Make sure BoutiqueBadge exists in presentation.ui.components
+            BoutiqueBadge boutiqueBadge = new BoutiqueBadge(AuthService.getSelectedBoutiqueName());
+            centerPanel.add(boutiqueBadge);
+        } else {
+            System.out.println("Not adding BoutiqueBadge - isProprietaire: " + AuthService.isProprietaire()
+                    + ", boutiqueName: " + AuthService.getSelectedBoutiqueName());
+        }
+
+        // Right side - User info and logout
         JPanel userPanel = new JPanel(new FlowLayout(FlowLayout.RIGHT, 16, 0));
         userPanel.setOpaque(false);
 
@@ -129,7 +183,7 @@ public class MainFrame extends JFrame {
         userLabel.setFont(UITheme.getBodyFont().deriveFont(15f));
 
         RedButton logoutBtn = new RedButton("Déconnexion");
-        logoutBtn.setPreferredSize(new Dimension(140, 42));
+        logoutBtn.setPreferredSize(new Dimension(160, 46));
         logoutBtn.addActionListener(e -> logout());
 
         userPanel.add(userLabel);
@@ -137,6 +191,7 @@ public class MainFrame extends JFrame {
         userPanel.add(logoutBtn);
 
         header.add(title, BorderLayout.WEST);
+        header.add(centerPanel, BorderLayout.CENTER);
         header.add(userPanel, BorderLayout.EAST);
 
         return header;

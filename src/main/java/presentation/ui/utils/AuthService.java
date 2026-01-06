@@ -2,13 +2,22 @@ package presentation.ui.utils;
 
 import dao.Utilisateur;
 import dao.Reparateur;
+import dao.Boutique;
+import dao.Proprietaire;
 import metier.GestionUtilisateur;
 import metier.GestionReparateur;
+import metier.GestionProprietaire;
+import exception.AuthenticationException;
+import exception.DatabaseException;
+import exception.EntityNotFoundException;
+
+import java.util.List;
 
 public class AuthService {
     private static Utilisateur currentUser;
+    private static Boutique selectedBoutique;
 
-    public static boolean login(String email, String password) {
+    public static void login(String email, String password) throws AuthenticationException {
         System.out.println("AuthService.login called with email: '" + email + "'");
         GestionUtilisateur gestionUtilisateur = new GestionUtilisateur();
         Utilisateur user = gestionUtilisateur.findByEmail(email);
@@ -16,11 +25,32 @@ public class AuthService {
         // If not found in Utilisateur, check Reparateur
         if (user == null) {
             System.out.println("User not found in Utilisateur, checking Reparateur...");
-            GestionReparateur gestionReparateur = new GestionReparateur();
-            Reparateur reparateur = gestionReparateur.findByEmail(email);
-            if (reparateur != null) {
-                System.out.println("Found Reparateur: " + reparateur.getEmail() + ", Role: " + reparateur.getRole());
-                user = reparateur;
+            
+            try {
+                GestionReparateur gestionReparateur = new GestionReparateur();
+                Reparateur reparateur = gestionReparateur.findByEmail(email);
+                if (reparateur != null) {
+                    System.out.println("Found Reparateur: " + reparateur.getEmail() + ", Role: " + reparateur.getRole());
+                    user = reparateur;
+                }
+            } catch (DatabaseException | EntityNotFoundException e) {
+                System.out.println("Reparateur not found: " + e.getMessage());
+            }
+            
+            // If still not found, check Proprietaire
+            if (user == null) {
+                System.out.println("Checking Proprietaire...");
+                try {
+                    GestionProprietaire gestionProprietaire = new GestionProprietaire();
+                    List<Proprietaire> proprietaires = gestionProprietaire.findByEmail(email);
+                    if (!proprietaires.isEmpty()) {
+                        Proprietaire proprietaire = proprietaires.get(0);
+                        System.out.println("Found Proprietaire: " + proprietaire.getEmail() + ", Role: " + proprietaire.getRole());
+                        user = proprietaire;
+                    }
+                } catch (Exception e) {
+                    System.out.println("Error checking Proprietaire: " + e.getMessage());
+                }
             }
         } else {
             System.out.println("Found Utilisateur: " + user.getEmail() + ", Role: " + user.getRole());
@@ -28,13 +58,16 @@ public class AuthService {
 
         System.out.println("User found: " + (user != null ? "YES - " + user.getEmail() + ", Role: " + user.getRole() : "NO"));
 
-        if (user != null && user.getPassword().equals(password)) { // In a real app, use hashed passwords
-            System.out.println("Password matches, setting session. Final role: " + user.getRole());
-            setSession(user);
-            return true;
+        if (user == null) {
+            throw new AuthenticationException("Utilisateur non trouvé avec cet email");
         }
-        System.out.println("Password doesn't match or user is null");
-        return false;
+
+        if (!user.getPassword().equals(password)) {
+            throw new AuthenticationException("Mot de passe incorrect");
+        }
+
+        System.out.println("Password matches, setting session. Final role: " + user.getRole());
+        setSession(user);
     }
 
     private static void setSession(Utilisateur user) {
@@ -43,6 +76,7 @@ public class AuthService {
 
     public static void logout() {
         currentUser = null;
+        selectedBoutique = null;
     }
 
     public static boolean isLoggedIn() {
@@ -78,5 +112,17 @@ public class AuthService {
     public static boolean isMagasinier() {
         String role = getUserRole();
         return "MAGASINIER".equalsIgnoreCase(role);
+    }
+
+    public static void setSelectedBoutique(Boutique boutique) {
+        selectedBoutique = boutique;
+    }
+
+    public static Boutique getSelectedBoutique() {
+        return selectedBoutique;
+    }
+
+    public static String getSelectedBoutiqueName() {
+        return (selectedBoutique != null) ? selectedBoutique.getNomboutique() : null;
     }
 }

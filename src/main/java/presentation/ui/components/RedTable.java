@@ -11,7 +11,7 @@ public class RedTable extends JTable {
 
     public RedTable() {
         super();
-        setRowHeight(52); // Using theme-consistent height
+        setRowHeight(60); // Using theme-consistent height
         setShowHorizontalLines(true);
         setShowVerticalLines(false);
         setGridColor(UITheme.BORDER_MEDIUM);
@@ -29,19 +29,19 @@ public class RedTable extends JTable {
         header.setForeground(Color.WHITE); // Pure white for maximum visibility
         header.setFont(UITheme.getLabelFont().deriveFont(14f)); // Fixed: using theme font
         header.setReorderingAllowed(false);
-        header.setPreferredSize(new Dimension(header.getWidth(), 52));
+        header.setPreferredSize(new Dimension(header.getWidth(), 60));
 
         // Header renderer
         DefaultTableCellRenderer headerRenderer = new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, 
+            public Component getTableCellRendererComponent(JTable table, Object value,
                     boolean isSelected, boolean hasFocus, int row, int column) {
                 Component c = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
                 c.setBackground(UITheme.BG_TERTIARY);
                 c.setForeground(Color.WHITE); // Pure white for maximum visibility
                 c.setFont(UITheme.getLabelFont().deriveFont(14f));
                 ((JLabel) c).setHorizontalAlignment(SwingConstants.LEFT);
-                ((JLabel) c).setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
+                ((JLabel) c).setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
                 // Ensure text is set
                 if (value != null) {
                     ((JLabel) c).setText(value.toString());
@@ -52,7 +52,7 @@ public class RedTable extends JTable {
 
         // Apply header renderer to all columns
         applyHeaderRenderer(headerRenderer);
-        
+
         // Also apply when model changes
         addPropertyChangeListener("model", evt -> {
             SwingUtilities.invokeLater(() -> applyHeaderRenderer(headerRenderer));
@@ -61,13 +61,13 @@ public class RedTable extends JTable {
         // Main cell renderer
         setDefaultRenderer(Object.class, new DefaultTableCellRenderer() {
             @Override
-            public Component getTableCellRendererComponent(JTable table, Object value, 
+            public Component getTableCellRendererComponent(JTable table, Object value,
                     boolean isSelected, boolean hasFocus, int row, int column) {
                 super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, column);
-                
-                setBorder(BorderFactory.createEmptyBorder(14, 18, 14, 18));
+
+                setBorder(BorderFactory.createEmptyBorder(12, 20, 12, 20));
                 setFont(UITheme.getBodyFont().deriveFont(14f)); // Fixed: using theme font
-                
+
                 // Background logic
                 if (isSelected) {
                     setBackground(UITheme.withAlpha(UITheme.PRIMARY, 30));
@@ -80,7 +80,7 @@ public class RedTable extends JTable {
                     setBackground(row % 2 == 0 ? UITheme.SURFACE : UITheme.SURFACE_ELEVATED);
                     setForeground(Color.WHITE); // White text for maximum visibility
                 }
-                
+
                 // Column-specific formatting
                 if (column == 0) {
                     // First column (often ID or index)
@@ -93,7 +93,7 @@ public class RedTable extends JTable {
                     setFont(UITheme.getBodyFont().deriveFont(14f));
                     // Foreground already set to white above
                 }
-                
+
                 return this;
             }
         });
@@ -128,7 +128,7 @@ public class RedTable extends JTable {
             getTableHeader().repaint();
         }
     }
-    
+
     @Override
     public boolean isCellEditable(int row, int column) {
         return false;
